@@ -19,6 +19,7 @@ from rdkit.Chem import AllChem
 # Preloaded zip
 ZIP_URL = 'https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/ASM_Vapor_Spectra.csv.zip'
 
+@st.cache_data
 def load_data_from_zip(zip_url):
     try:
         response = requests.get(zip_url)
@@ -35,7 +36,7 @@ def load_data_from_zip(zip_url):
 
         if csv_file:
             with zip_file.open(csv_file) as f:
-                df = pd.read_csv(f)
+                df = pd.read_csv(f, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])  # Read only necessary columns
             return df
         else:
             st.error("No CSV file found inside the ZIP from the server.")
@@ -62,6 +63,7 @@ def bin_spectra(spectra, bin_size, bin_type='wavelength'):
     return binned_spectra, bins[:-1]
 
 # Function to filter molecules by functional group using SMARTS
+@st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
     filtered_smiles = []
     for smiles in smiles_list:
@@ -104,23 +106,22 @@ if uploaded_file is not None:
                     break
             if csv_file:
                 with z.open(csv_file) as f:
-                    data = pd.read_csv(f)
+                    data = pd.read_csv(f, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])  # Read only necessary columns
                 st.write(f"Extracted and reading: {csv_file}")
             else:
                 st.error("No CSV file found inside the uploaded ZIP.")
     
     elif uploaded_file.name.endswith('.csv'):
-        data = pd.read_csv(uploaded_file)
+        data = pd.read_csv(uploaded_file, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])  # Read only necessary columns
         st.write("Using uploaded CSV file data.")
 
 if data is not None:
     data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
     data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
-    data['Normalized_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(lambda x: x / max(x))
+    data['Normalized_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(lambda x: x / np.max(x))  # Use numpy's max for efficiency
 
     columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
-    headerdata = data[columns_to_display]
-    st.write(headerdata)
+    st.write(data[columns_to_display])
 
     unique_smiles = data['SMILES'].unique()
 
@@ -177,6 +178,7 @@ if data is not None:
                 ax.set_ylabel("Molecules")
 
                 st.pyplot(fig)
+                plt.clf()  # Clear figure after rendering
 
                 # Add a download button
                 buf = io.BytesIO()
@@ -247,6 +249,7 @@ if data is not None:
                 ax.legend()
 
             st.pyplot(fig)
+            plt.clf()  # Clear figure after rendering
 
             # Download button for the spectra plot
             buf = io.BytesIO()
