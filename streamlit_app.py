@@ -56,7 +56,10 @@ def bin_spectra(spectra, bin_size, bin_type='wavelength'):
         bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
         digitized = np.digitize(wavenumber, bins)
     elif bin_type == 'log_wavenumber':
-        bins = np.logspace(np.log10(wavenumber.min()), np.log10(wavenumber.max()), num=bin_size)
+        # Ensure that the data is positive and larger than zero for logarithmic binning
+        if wavenumber.min() <= 0 or bin_size <= 0:
+            raise ValueError("Logarithmic binning requires positive values for bin size and wavenumber.")
+        bins = np.logspace(np.log10(wavenumber.min()), np.log10(wavenumber.max()), num=int(bin_size))
         digitized = np.digitize(wavenumber, bins)
     else:
         return spectra  # No binning if the type is not recognized
@@ -193,7 +196,6 @@ if data is not None:
 
                 color_options = ['r', 'g', 'b', 'c', 'm', 'y']
                 random.shuffle(color_options)
-                alpha_value = st.slider('Adjust transparency of unselected spectra:', 0.0, 1.0, 0.05)
 
                 target_spectra = {}
                 for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Normalized_Spectra_Intensity']].values:
@@ -211,7 +213,7 @@ if data is not None:
                             x_axis = bins
                         else:
                             x_axis = wavelength
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=alpha_value)
+                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
                 for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
