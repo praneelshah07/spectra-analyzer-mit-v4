@@ -44,22 +44,29 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin the spectra data
-def bin_spectra(spectra, bin_size, bin_type='wavelength'):
+# Function to bin and normalize spectra
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength'):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
     if bin_type == 'wavelength':
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
+        x_axis = bins
     elif bin_type == 'wavenumber':
         bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
         digitized = np.digitize(wavenumber, bins)
+        x_axis = bins
     else:
-        return spectra  # No binning if the type is not recognized
+        return spectra, None  # No binning if the type is not recognized
 
+    # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
-    return binned_spectra, bins[:-1]
+
+    # Normalize the spectra after binning
+    normalized_spectra = binned_spectra / np.max(binned_spectra)
+    
+    return normalized_spectra, x_axis[:-1]
 
 # Function to filter molecules by functional group using SMARTS
 @st.cache_data
@@ -122,8 +129,7 @@ if uploaded_file is not None:
 if data is not None:
     data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
     data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
-    data['Normalized_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(lambda x: x / np.max(x))
-
+    
     columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
     st.write(data[columns_to_display])
 
@@ -146,7 +152,7 @@ if data is not None:
 
     # Binning options
     bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
-    bin_size = st.number_input('Enter bin size (resolution):', min_value=0.01, max_value=100.0, value=1.0)
+    bin_size = st.number_input('Enter bin size (resolution):', min_value=0.01, max_value=1.0, value=0.1)
 
     # Multiselect for highlighting molecules (now using the filtered list)
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
@@ -163,7 +169,7 @@ if data is not None:
             if plot_sonogram:
                 st.write("Generating sonogram, please wait...")
 
-                intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Normalized_Spectra_Intensity'].tolist())
+                intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
                 if len(intensity_data) > 1:
                     dist_mat = squareform(pdist(intensity_data))
                     ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
@@ -192,20 +198,20 @@ if data is not None:
                 random.shuffle(color_options)
 
                 target_spectra = {}
-                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Normalized_Spectra_Intensity']].values:
+                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
-                            spectra, bins = bin_spectra(spectra, bin_size, bin_type.lower())
-                            x_axis = bins
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower())
                         else:
+                            spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
                     else:
                         if bin_type != 'None':
-                            spectra, bins = bin_spectra(spectra, bin_size, bin_type.lower())
-                            x_axis = bins
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower())
                         else:
+                            spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
