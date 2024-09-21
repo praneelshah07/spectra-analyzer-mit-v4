@@ -194,7 +194,6 @@ if data is not None:
                     st.download_button(label="Download Sonogram as PNG", data=buf, file_name="sonogram.png", mime="image/png")
                 else:
                     st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.") 
-                else: 
                     fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100) 
                     wavenumber = np.arange(4000, 500, -1) 
                     wavelength = 10000 / wavenumber
