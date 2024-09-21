@@ -248,11 +248,13 @@ if data is not None:
                 if selected_smiles:
                     ax.legend()
 
-                st.pyplot(fig)
-                plt.clf()
+          if selected_smiles:
+            ax.legend()
 
-                # Download button for the spectra plot
-                buf = io.BytesIO()
-                fig.savefig(buf, format='png')
-                buf.seek(0)
-                st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
+        st.pyplot(fig)
+
+        # Download button for the spectra plot
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png')
+        buf.seek(0)
+        st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
