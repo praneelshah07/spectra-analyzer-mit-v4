@@ -53,13 +53,9 @@ def bin_spectra(spectra, bin_size, bin_type='wavelength'):
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
     elif bin_type == 'wavenumber':
+        if bin_size < 1:  # Ensure that bin size is reasonable
+            raise ValueError("Bin size should be greater than or equal to 1 for wavenumber binning.")
         bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
-        digitized = np.digitize(wavenumber, bins)
-    elif bin_type == 'log_wavenumber':
-        # Ensure that the data is positive and larger than zero for logarithmic binning
-        if wavenumber.min() <= 0 or bin_size <= 0:
-            raise ValueError("Logarithmic binning requires positive values for bin size and wavenumber.")
-        bins = np.logspace(np.log10(wavenumber.min()), np.log10(wavenumber.max()), num=int(bin_size))
         digitized = np.digitize(wavenumber, bins)
     else:
         return spectra  # No binning if the type is not recognized
@@ -150,9 +146,9 @@ if data is not None:
             except Exception as e:
                 st.error(f"Invalid SMARTS pattern: {e}")
 
-    # Binning options
-    bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber', 'Logarithmic Wavenumber'])
-    bin_size = st.number_input('Enter bin size (resolution):', min_value=0.01, max_value=100.0, value=1.0)
+    # Binning options (removed logarithmic wavenumber)
+    bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
+    bin_size = st.number_input('Enter bin size (resolution):', min_value=1.0, max_value=100.0, value=1.0)
 
     # Multiselect for highlighting molecules (now using the filtered list)
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
