@@ -53,14 +53,13 @@ def bin_spectra(spectra, bin_size, bin_type='wavelength'):
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
     elif bin_type == 'wavenumber':
-        if bin_size < 1:  # Ensure that bin size is reasonable
-            raise ValueError("Bin size should be greater than or equal to 1 for wavenumber binning.")
         bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
         digitized = np.digitize(wavenumber, bins)
     else:
         return spectra  # No binning if the type is not recognized
 
-    binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
+    # Bin the spectra
+    binned_spectra = np.array([np.mean(spectra[digitized == i]) if len(spectra[digitized == i]) > 0 else 0 for i in range(1, len(bins))])
     return binned_spectra, bins[:-1]
 
 # Function to filter molecules by functional group using SMARTS
@@ -146,7 +145,7 @@ if data is not None:
             except Exception as e:
                 st.error(f"Invalid SMARTS pattern: {e}")
 
-    # Binning options (removed logarithmic wavenumber)
+    # Binning options
     bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
     bin_size = st.number_input('Enter bin size (resolution):', min_value=1.0, max_value=100.0, value=1.0)
 
@@ -247,7 +246,7 @@ if data is not None:
                 st.pyplot(fig)
                 plt.clf()
 
-                # Download button for the spectra plot
+                # Fix for blank plot downloads
                 buf = io.BytesIO()
                 fig.savefig(buf, format='png')
                 buf.seek(0)
