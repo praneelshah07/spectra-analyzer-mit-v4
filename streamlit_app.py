@@ -1,5 +1,3 @@
-# Adjusted code based on the provided suggestions
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -157,8 +155,6 @@ if data is not None:
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
     peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
-    peak_min_height = st.slider('Set minimum peak height:', 0.0, 1.0, 0.05)
-    peak_min_distance = st.slider('Set minimum distance between peaks:', 1, 100, 10)
 
     # Sonogram plotting using all data
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
@@ -191,8 +187,6 @@ if data is not None:
                 else:
                     st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
             else:
-                st.write("Generating spectra plot, please wait...")
-
                 fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
@@ -225,7 +219,7 @@ if data is not None:
                                     alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
-                        peaks, _ = find_peaks(spectra, height=peak_min_height, distance=peak_min_distance)
+                        peaks, _ = find_peaks(spectra, height=0.05)
                         for peak in peaks:
                             peak_wavelength = x_axis[peak]
                             peak_intensity = spectra[peak]
