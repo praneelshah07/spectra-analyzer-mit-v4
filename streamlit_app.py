@@ -55,12 +55,6 @@ def bin_spectra(spectra, bin_size, bin_type='wavelength'):
     elif bin_type == 'wavenumber':
         bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
         digitized = np.digitize(wavenumber, bins)
-    elif bin_type == 'log_wavenumber':
-        # Ensure that the data is positive and larger than zero for logarithmic binning
-        if wavenumber.min() <= 0 or bin_size <= 0:
-            raise ValueError("Logarithmic binning requires positive values for bin size and wavenumber.")
-        bins = np.logspace(np.log10(wavenumber.min()), np.log10(wavenumber.max()), num=int(bin_size))
-        digitized = np.digitize(wavenumber, bins)
     else:
         return spectra  # No binning if the type is not recognized
 
@@ -151,7 +145,7 @@ if data is not None:
                 st.error(f"Invalid SMARTS pattern: {e}")
 
     # Binning options
-    bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber', 'Logarithmic Wavenumber'])
+    bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
     bin_size = st.number_input('Enter bin size (resolution):', min_value=0.01, max_value=100.0, value=1.0)
 
     # Multiselect for highlighting molecules (now using the filtered list)
@@ -229,7 +223,6 @@ if data is not None:
                                     fontsize=10, ha='center', color=color_options[i % len(color_options)])
 
                 # Customize plot
-                ax.set_xscale('log')
                 ax.set_xlim([x_axis.min(), x_axis.max()])
 
                 major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
