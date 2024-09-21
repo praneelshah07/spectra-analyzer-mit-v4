@@ -154,7 +154,7 @@ if data is not None:
     peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
 
     # Sonogram plotting using all data
-    plot_sonogram = st.checkbox('Plot Sonogram for Selected Molecules', value=False)
+    plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
