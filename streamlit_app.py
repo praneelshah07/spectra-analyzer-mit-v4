@@ -97,12 +97,49 @@ def compute_serial_matrix(dist_mat, method="ward"):
 # Set up
 st.title("Spectra Visualization App")
 
-# Load data
+# Load preloaded data from ZIP
 data = load_data_from_zip(ZIP_URL)
 if data is not None:
     st.write("Using preloaded data from GitHub zip file.")
 
-# UI Rearrangement according to your suggestion
+# File uploader for custom datasets
+uploaded_file = st.file_uploader("If you would like to enter another dataset, insert it here", type=["csv", "zip"])
+
+# Load new dataset if uploaded
+if uploaded_file is not None:
+    if uploaded_file.name.endswith('.zip'):
+        with zipfile.ZipFile(uploaded_file, 'r') as z:
+            file_list = z.namelist()
+            csv_file = None
+            for file in file_list:
+                if file.endswith('.csv'):
+                    csv_file = file
+                    break
+            if csv_file:
+                with z.open(csv_file) as f:
+                    data = pd.read_csv(f, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])
+                st.write(f"Extracted and reading: {csv_file}")
+            else:
+                st.error("No CSV file found inside the uploaded ZIP.")
+    
+    elif uploaded_file.name.endswith('.csv'):
+        try:
+            data = pd.read_csv(uploaded_file, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])
+            st.write("Using uploaded CSV file data.")
+        except pd.errors.EmptyDataError:
+            st.error("Uploaded CSV is empty.")
+        except KeyError:
+            st.error("Uploaded file is missing required columns.")
+
+# Display dataset preview
+if data is not None:
+    data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
+    data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
+    
+    columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
+    st.write(data[columns_to_display])
+
+# UI Rearrangement
 # Step 1: SMARTS filtering
 use_smarts_filter = st.checkbox('Apply SMARTS Filtering', value=False)
 
