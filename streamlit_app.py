@@ -250,16 +250,25 @@ if confirm_button:
                                 alpha=0.5, label=f"{smiles}")
 
                 if peak_finding_enabled:
-                    # Detect peaks, sort by prominence, and select the top `num_peaks`
+                    # Detect peaks and retrieve peak properties like prominence
                     peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
-                    prominent_peaks = sorted(peaks, key=lambda p: properties['prominences'][p], reverse=True)[:num_peaks]
+                    
+                    # Sort the peaks by their prominence and select the top `num_peaks`
+                    if len(peaks) > 0:
+                        prominences = properties['prominences']
+                        # Zip peaks with their corresponding prominences, then sort by prominence
+                        peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
+                        
+                        # Extract the top `num_peaks` most prominent peaks
+                        top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                    for peak in prominent_peaks:
-                        peak_wavelength = x_axis[peak]
-                        peak_intensity = spectra[peak]
-                        # Label peaks with wavelength
-                        ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                        # Now label the top peaks
+                        for peak in top_peaks:
+                            peak_wavelength = x_axis[peak]
+                            peak_intensity = spectra[peak]
+                            # Label the peaks with wavelength
+                            ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                                    fontsize=10, ha='center', color=color_options[i % len(color_options)])
 
             # Add functional group labels for background gases based on wavelength
             for fg in st.session_state['functional_groups']:
