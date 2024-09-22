@@ -143,7 +143,10 @@ if data is not None:
 # Step 1: SMARTS filtering
 use_smarts_filter = st.checkbox('Apply SMARTS Filtering', value=False)
 
-# Step 2: Select molecule by SMILES
+# Ensure filtered_smiles is always initialized
+filtered_smiles = data['SMILES'].unique()
+
+# Step 2: Apply SMARTS filtering if enabled
 if use_smarts_filter:
     functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
     if functional_group_smarts:
@@ -152,23 +155,22 @@ if use_smarts_filter:
             st.write(f"Filtered dataset to {len(filtered_smiles)} molecules using SMARTS pattern.")
         except Exception as e:
             st.error(f"Invalid SMARTS pattern: {e}")
-else:
-    filtered_smiles = data['SMILES'].unique()
 
+# Step 3: Select molecule by SMILES
 selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
-# Step 3: Bin size input
+# Step 4: Bin size input
 bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
 bin_size = st.number_input('Enter bin size (resolution):', min_value=0.01, max_value=1.0, value=0.1)
 
-# Step 4: Checkboxes for Peak Finding and Sonogram
+# Step 5: Checkboxes for Peak Finding and Sonogram
 peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
 plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-# Step 5: Slider for number of peaks to detect
+# Step 6: Slider for number of peaks to detect
 num_peaks = st.slider('Number of Peaks to Detect', min_value=1, max_value=20, value=5)
 
-# Step 6: Functional group input for background gas labeling
+# Step 7: Functional group input for background gas labeling
 st.write("Background Gas Functional Group Labels")
 
 if 'functional_groups' not in st.session_state:
@@ -192,7 +194,7 @@ for i, fg in enumerate(st.session_state['functional_groups']):
     if col3.button(f"Delete", key=f"delete_fg_{i}"):
         st.session_state['functional_groups'].pop(i)
 
-# Step 7: Confirm button
+# Step 8: Confirm button
 confirm_button = st.button('Confirm Selection and Start Plotting')
 
 if confirm_button:
