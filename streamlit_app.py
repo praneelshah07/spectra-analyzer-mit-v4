@@ -163,11 +163,27 @@ if data is not None:
 
     # Functional group input for background gas labeling
     st.write("Background Gas Functional Group Labels")
-    functional_groups = st.experimental_data_editor(
-        pd.DataFrame({'Functional Group': [], 'Wavenumber': []}),
-        key='functional_groups',
-        use_container_width=True
-    )
+    
+    if 'functional_groups' not in st.session_state:
+        st.session_state['functional_groups'] = []
+
+    # Form to input functional group data
+    with st.form(key='functional_group_form'):
+        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
+        fg_wavenumber = st.number_input("Wavenumber Position", min_value=500.0, max_value=4000.0, value=1000.0)
+        add_fg = st.form_submit_button("Add Functional Group")
+
+    if add_fg:
+        st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavenumber': fg_wavenumber})
+
+    # Display existing functional group labels and allow deletion
+    st.write("Current Functional Group Labels:")
+    for i, fg in enumerate(st.session_state['functional_groups']):
+        col1, col2, col3 = st.columns([2, 2, 1])
+        col1.write(f"Functional Group: {fg['Functional Group']}")
+        col2.write(f"Wavenumber: {fg['Wavenumber']}")
+        if col3.button(f"Delete", key=f"delete_fg_{i}"):
+            st.session_state['functional_groups'].pop(i)
 
     # Sonogram plotting using all data
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
@@ -241,9 +257,9 @@ if data is not None:
                                     fontsize=10, ha='center', color=color_options[i % len(color_options)])
 
                 # Add functional group labels for background gases
-                for index, row in functional_groups.iterrows():
-                    fg_wavenumber = row['Wavenumber']
-                    fg_label = row['Functional Group']
+                for fg in st.session_state['functional_groups']:
+                    fg_wavenumber = fg['Wavenumber']
+                    fg_label = fg['Functional Group']
                     ax.axvline(fg_wavenumber, color='grey', linestyle='--')
                     ax.text(fg_wavenumber, 1, fg_label, fontsize=12, color='grey', ha='center')
 
