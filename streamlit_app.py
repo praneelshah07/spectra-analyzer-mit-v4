@@ -44,10 +44,6 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to convert wavenumber to wavelength
-def wavenumber_to_wavelength(wavenumber):
-    return 10000 / wavenumber  # Convert wavenumber (cm⁻¹) to wavelength (microns)
-
 # Function to bin and normalize spectra
 def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength'):
     wavenumber = np.arange(4000, 500, -1)
@@ -167,30 +163,30 @@ bin_size = st.number_input('Enter bin size (resolution):', min_value=0.01, max_v
 peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
 plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-# Step 6: Slider for number of peaks to detect
-num_peaks = st.slider('Number of Peaks to Detect', min_value=1, max_value=20, value=5)
+# Step 6: Slider for number of peaks to detect, with focus on main peaks
+num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
 
-# Step 7: Functional group input for background gas labeling
+# Step 7: Functional group input for background gas labeling (in wavelength)
 st.write("Background Gas Functional Group Labels")
 
 if 'functional_groups' not in st.session_state:
     st.session_state['functional_groups'] = []
 
-# Form to input functional group data
+# Form to input functional group data based on wavelength
 with st.form(key='functional_group_form'):
     fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-    fg_wavenumber = st.number_input("Wavenumber Position (cm⁻¹)", min_value=500.0, max_value=4000.0, value=1000.0)
+    fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
     add_fg = st.form_submit_button("Add Functional Group")
 
 if add_fg:
-    st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavenumber': fg_wavenumber})
+    st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
 
 # Display existing functional group labels and allow deletion
 st.write("Current Functional Group Labels:")
 for i, fg in enumerate(st.session_state['functional_groups']):
     col1, col2, col3 = st.columns([2, 2, 1])
     col1.write(f"Functional Group: {fg['Functional Group']}")
-    col2.write(f"Wavenumber: {fg['Wavenumber']}")
+    col2.write(f"Wavelength: {fg['Wavelength']} µm")
     if col3.button(f"Delete", key=f"delete_fg_{i}"):
         st.session_state['functional_groups'].pop(i)
 
@@ -254,7 +250,7 @@ if confirm_button:
                                 alpha=0.5, label=f"{smiles}")
 
                 if peak_finding_enabled:
-                    peaks, _ = find_peaks(spectra, height=0.05)
+                    peaks, _ = find_peaks(spectra, height=0.05, prominence=0.1)  # Prioritize prominent peaks
                     peaks = peaks[:num_peaks]  # Limit the number of peaks based on user selection
                     for peak in peaks:
                         peak_wavelength = x_axis[peak]
@@ -263,13 +259,12 @@ if confirm_button:
                         ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
                                 fontsize=10, ha='center', color=color_options[i % len(color_options)])
 
-            # Add functional group labels for background gases
+            # Add functional group labels for background gases based on wavelength
             for fg in st.session_state['functional_groups']:
-                fg_wavenumber = fg['Wavenumber']
-                fg_wavelength = wavenumber_to_wavelength(fg_wavenumber)  # Convert wavenumber to wavelength
+                fg_wavelength = fg['Wavelength']
                 fg_label = fg['Functional Group']
                 ax.axvline(fg_wavelength, color='grey', linestyle='--')
-                ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='grey', ha='center')
+                ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
             # Customize plot
             ax.set_xlim([x_axis.min(), x_axis.max()])
