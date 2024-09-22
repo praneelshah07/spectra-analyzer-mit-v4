@@ -250,9 +250,11 @@ if confirm_button:
                                 alpha=0.5, label=f"{smiles}")
 
                 if peak_finding_enabled:
-                    peaks, _ = find_peaks(spectra, height=0.05, prominence=0.1)  # Prioritize prominent peaks
-                    peaks = peaks[:num_peaks]  # Limit the number of peaks based on user selection
-                    for peak in peaks:
+                    # Detect peaks, sort by prominence, and select the top `num_peaks`
+                    peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
+                    prominent_peaks = sorted(peaks, key=lambda p: properties['prominences'][p], reverse=True)[:num_peaks]
+
+                    for peak in prominent_peaks:
                         peak_wavelength = x_axis[peak]
                         peak_intensity = spectra[peak]
                         # Label peaks with wavelength
