@@ -161,8 +161,13 @@ if data is not None:
     peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
     num_peaks = st.slider('Number of Peaks to Detect', min_value=1, max_value=20, value=5)
 
-    # Toggle for labeling peaks with molecule name
-    label_molecule_names = st.checkbox('Label Peaks with Molecule Names (for Foreground Gas)', value=False)
+    # Functional group input for background gas labeling
+    st.write("Background Gas Functional Group Labels")
+    functional_groups = st.experimental_data_editor(
+        pd.DataFrame({'Functional Group': [], 'Wavenumber': []}),
+        key='functional_groups',
+        use_container_width=True
+    )
 
     # Sonogram plotting using all data
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
@@ -231,10 +236,16 @@ if data is not None:
                         for peak in peaks:
                             peak_wavelength = x_axis[peak]
                             peak_intensity = spectra[peak]
-                            # Label peaks with molecule names if enabled
-                            label = f'{smiles}' if label_molecule_names else f'{round(peak_wavelength, 1)}'
-                            ax.text(peak_wavelength, peak_intensity + 0.05, label, 
+                            # Label peaks with wavelength
+                            ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
                                     fontsize=10, ha='center', color=color_options[i % len(color_options)])
+
+                # Add functional group labels for background gases
+                for index, row in functional_groups.iterrows():
+                    fg_wavenumber = row['Wavenumber']
+                    fg_label = row['Functional Group']
+                    ax.axvline(fg_wavenumber, color='grey', linestyle='--')
+                    ax.text(fg_wavenumber, 1, fg_label, fontsize=12, color='grey', ha='center')
 
                 # Customize plot
                 ax.set_xlim([x_axis.min(), x_axis.max()])
