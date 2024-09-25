@@ -81,14 +81,18 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
             filtered_smiles.append(smiles)
     return filtered_smiles
 
-# Function for Advanced Filtering based on input functional groups
+# Function for Advanced Filtering based on input functional groups, adding hydrogens for C-H detection
 @st.cache_data
 def advanced_filtering_by_bond(smiles_list, bond_pattern):
     filtered_smiles = []
-    bond_smarts = f'[{bond_pattern}]'
+    if bond_pattern == "C-H":
+        bond_smarts = "[C][H]"  # SMARTS for C-H bond
+    else:
+        bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
-        if mol and mol.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
+        mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens
+        if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
             filtered_smiles.append(smiles)
     return filtered_smiles
 
