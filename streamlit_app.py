@@ -248,8 +248,8 @@ if confirm_button:
                         x_axis = wavelength
                     
                     # Clean x_axis and spectra to handle NaN or inf values
-                    valid_indices = np.isfinite(x_axis) & np.isfinite(spectra)
-                    x_axis_clean = x_axis[valid_indices]
+                    valid_indices = np.isfinite(x_axis[:len(spectra)]) & np.isfinite(spectra)
+                    x_axis_clean = x_axis[:len(spectra)][valid_indices]
                     spectra_clean = spectra[valid_indices]
 
                     ax.fill_between(x_axis_clean, 0, spectra_clean, color="k", alpha=0.01)
@@ -258,8 +258,8 @@ if confirm_button:
                 spectra = target_spectra[smiles]
                 
                 # Clean x_axis and spectra to handle NaN or inf values for target spectra
-                valid_indices = np.isfinite(x_axis) & np.isfinite(spectra)
-                x_axis_clean = x_axis[valid_indices]
+                valid_indices = np.isfinite(x_axis[:len(spectra)]) & np.isfinite(spectra)
+                x_axis_clean = x_axis[:len(spectra)][valid_indices]
                 spectra_clean = spectra[valid_indices]
 
                 ax.fill_between(x_axis_clean, 0, spectra_clean, color=color_options[i % len(color_options)], 
