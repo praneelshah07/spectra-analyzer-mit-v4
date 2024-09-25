@@ -53,10 +53,6 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
         x_axis = bins
-    elif bin_type == 'wavenumber':
-        bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
-        digitized = np.digitize(wavenumber, bins)
-        x_axis = bins
     else:
         return spectra, None  # No binning if the type is not recognized
 
@@ -162,11 +158,11 @@ if use_smarts_filter:
 # Step 3: Select molecule by SMILES
 selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
-# Step 4: Bin size input (no restriction on bin size)
-bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
+# Step 4: Bin size input (only for wavelength)
+bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
 
 # Removed the restrictive range for bin sizes
-bin_size = st.number_input('Enter bin size (resolution):', value=0.1)
+bin_size = st.number_input('Enter bin size (resolution) in microns:', value=0.1)
 
 # Add option to ignore Q-branch peaks during normalization
 ignore_q_branch = st.checkbox('Ignore Q-branch for normalization', value=False)
@@ -304,7 +300,7 @@ if confirm_button:
                 labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                 bottom=True, top=True, left=True, right=True)
 
-            ax.set_xlabel("Wavelength ($\mu$m)" if bin_type == 'Wavelength' else "Wavenumber (cm⁻¹)", fontsize=22)
+            ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
             ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
             if selected_smiles:
