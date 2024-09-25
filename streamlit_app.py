@@ -44,8 +44,8 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin and normalize spectra
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength'):
+# Function to bin and normalize spectra, with Q-branch handling
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -54,19 +54,24 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength'):
         digitized = np.digitize(wavelength, bins)
         x_axis = bins
     elif bin_type == 'wavenumber':
-        # Convert wavenumber to wavelength using the formula: wavelength = 10000 / wavenumber
-        wavenumber_bins = np.arange(500, 4000, bin_size)  # Wavenumber range
-        wavelength_bins = 10000 / wavenumber_bins  # Convert to wavelength
-        digitized = np.digitize(wavelength, wavelength_bins)
-        x_axis = wavelength_bins
+        bins = np.arange(wavenumber.min(), wavenumber.max(), bin_size)
+        digitized = np.digitize(wavenumber, bins)
+        x_axis = bins
     else:
         return spectra, None  # No binning if the type is not recognized
 
     # Perform binning by averaging spectra in each bin
-    binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(x_axis))])
+    binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
 
     # Normalize the spectra after binning
-    normalized_spectra = binned_spectra / np.max(binned_spectra)
+    if q_branch_threshold is not None:
+        # Ignore sharp Q-branch peaks by applying the threshold to the peak values
+        peaks, _ = find_peaks(binned_spectra, height=q_branch_threshold)
+        max_peak = np.max(np.delete(binned_spectra, peaks))  # Remove Q-branch peaks for normalization
+    else:
+        max_peak = np.max(binned_spectra)
+
+    normalized_spectra = binned_spectra / max_peak
     
     return normalized_spectra, x_axis[:-1]
 
@@ -157,13 +162,18 @@ if use_smarts_filter:
 # Step 3: Select molecule by SMILES
 selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
-# Step 4: Bin size input (with appropriate instructions)
-bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)', 'Wavenumber (in cm⁻¹)'])
+# Step 4: Bin size input (no restriction on bin size)
+bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength', 'Wavenumber'])
 
-if bin_type == 'Wavelength (in microns)':
-    bin_size = st.number_input('Enter bin size (resolution) in microns:', value=0.1)
-elif bin_type == 'Wavenumber (in cm⁻¹)':
-    bin_size = st.number_input('Enter bin size (resolution) in cm⁻¹:', value=10.0)
+# Removed the restrictive range for bin sizes
+bin_size = st.number_input('Enter bin size (resolution):', value=0.1)
+
+# Add option to ignore Q-branch peaks during normalization
+ignore_q_branch = st.checkbox('Ignore Q-branch for normalization', value=False)
+
+q_branch_threshold = None
+if ignore_q_branch:
+    q_branch_threshold = st.number_input('Enter Q-branch peak threshold (e.g., 0.8 for ignoring peaks > 80% of the maximum):', value=0.8)
 
 # Step 5: Checkboxes for Peak Finding and Sonogram
 peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
@@ -235,39 +245,27 @@ if confirm_button:
                 if smiles in selected_smiles:
                     # Apply binning if selected
                     if bin_type != 'None':
-                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower())
+                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
                     else:
                         spectra = spectra / np.max(spectra)  # Normalize if no binning
                         x_axis = wavelength
                     target_spectra[smiles] = spectra
                 else:
                     if bin_type != 'None':
-                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower())
+                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
                     else:
                         spectra = spectra / np.max(spectra)  # Normalize if no binning
                         x_axis = wavelength
-                    
-                    # Clean x_axis and spectra to handle NaN or inf values
-                    valid_indices = np.isfinite(x_axis[:len(spectra)]) & np.isfinite(spectra)
-                    x_axis_clean = x_axis[:len(spectra)][valid_indices]
-                    spectra_clean = spectra[valid_indices]
-
-                    ax.fill_between(x_axis_clean, 0, spectra_clean, color="k", alpha=0.01)
+                    ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
             for i, smiles in enumerate(target_spectra):
                 spectra = target_spectra[smiles]
-                
-                # Clean x_axis and spectra to handle NaN or inf values for target spectra
-                valid_indices = np.isfinite(x_axis[:len(spectra)]) & np.isfinite(spectra)
-                x_axis_clean = x_axis[:len(spectra)][valid_indices]
-                spectra_clean = spectra[valid_indices]
-
-                ax.fill_between(x_axis_clean, 0, spectra_clean, color=color_options[i % len(color_options)], 
+                ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
                                 alpha=0.5, label=f"{smiles}")
 
                 if peak_finding_enabled:
                     # Detect peaks and retrieve peak properties like prominence
-                    peaks, properties = find_peaks(spectra_clean, height=0.05, prominence=0.1)
+                    peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
                     
                     # Sort the peaks by their prominence and select the top `num_peaks`
                     if len(peaks) > 0:
@@ -280,8 +278,8 @@ if confirm_button:
 
                         # Now label the top peaks
                         for peak in top_peaks:
-                            peak_wavelength = x_axis_clean[peak]
-                            peak_intensity = spectra_clean[peak]
+                            peak_wavelength = x_axis[peak]
+                            peak_intensity = spectra[peak]
                             # Label the peaks with wavelength
                             ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
                                     fontsize=10, ha='center', color=color_options[i % len(color_options)])
@@ -294,7 +292,7 @@ if confirm_button:
                 ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
             # Customize plot
-            ax.set_xlim([x_axis_clean.min(), x_axis_clean.max()])
+            ax.set_xlim([x_axis.min(), x_axis.max()])
 
             major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
             ax.set_xticks(major_ticks)
@@ -306,7 +304,7 @@ if confirm_button:
                 labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                 bottom=True, top=True, left=True, right=True)
 
-            ax.set_xlabel("Wavelength ($\mu$m)" if bin_type == 'wavelength' else "Wavenumber (cm⁻¹)", fontsize=22)
+            ax.set_xlabel("Wavelength ($\mu$m)" if bin_type == 'Wavelength' else "Wavenumber (cm⁻¹)", fontsize=22)
             ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
             if selected_smiles:
