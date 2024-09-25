@@ -196,8 +196,6 @@ confirm_button = st.button('Confirm Selection and Start Plotting')
 if confirm_button:
     with st.spinner('Generating plots, this may take some time...'):
         if plot_sonogram:
-            st.write("Generating sonogram, please wait...")
-
             intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
             if len(intensity_data) > 1:
                 dist_mat = squareform(pdist(intensity_data))
