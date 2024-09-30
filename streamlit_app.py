@@ -226,6 +226,7 @@ with col1:
         # Background gas functional group labels
         st.write("Background Gas Functional Group Labels")
 
+        # Ensure 'functional_groups' is initialized in session state
         if 'functional_groups' not in st.session_state:
             st.session_state['functional_groups'] = []
 
