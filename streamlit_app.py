@@ -216,38 +216,38 @@ with col1:
     if ignore_q_branch:
         q_branch_threshold = st.number_input('Enter Q-branch peak threshold (e.g., 0.8 for ignoring peaks > 80% of the maximum):', value=0.8)
 
-    # Step 5: Checkboxes for Peak Finding and Sonogram
+    # Step 5: Conditional display of peak detection slider and functional group labels based on checkbox
     peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
-    plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Step 6: Slider for number of peaks to detect, with focus on main peaks
-    num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+    if peak_finding_enabled:
+        # Display slider for the number of peaks
+        num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
 
-    # Step 7: Functional group input for background gas labeling (in wavelength)
-    st.write("Background Gas Functional Group Labels")
+        # Background gas functional group labels
+        st.write("Background Gas Functional Group Labels")
 
-    if 'functional_groups' not in st.session_state:
-        st.session_state['functional_groups'] = []
+        if 'functional_groups' not in st.session_state:
+            st.session_state['functional_groups'] = []
 
-    # Form to input functional group data based on wavelength
-    with st.form(key='functional_group_form'):
-        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-        fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
-        add_fg = st.form_submit_button("Add Functional Group")
+        # Form to input functional group data based on wavelength
+        with st.form(key='functional_group_form'):
+            fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
+            fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
+            add_fg = st.form_submit_button("Add Functional Group")
 
-    if add_fg:
-        st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+        if add_fg:
+            st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
 
-    # Display existing functional group labels and allow deletion
-    st.write("Current Functional Group Labels:")
-    for i, fg in enumerate(st.session_state['functional_groups']):
-        col1, col2, col3 = st.columns([2, 2, 1])
-        col1.write(f"Functional Group: {fg['Functional Group']}")
-        col2.write(f"Wavelength: {fg['Wavelength']} µm")
-        if col3.button(f"Delete", key=f"delete_fg_{i}"):
-            st.session_state['functional_groups'].pop(i)
+        # Display existing functional group labels and allow deletion
+        st.write("Current Functional Group Labels:")
+        for i, fg in enumerate(st.session_state['functional_groups']):
+            col1, col2, col3 = st.columns([2, 2, 1])
+            col1.write(f"Functional Group: {fg['Functional Group']}")
+            col2.write(f"Wavelength: {fg['Wavelength']} µm")
+            if col3.button(f"Delete", key=f"delete_fg_{i}"):
+                st.session_state['functional_groups'].pop(i)
 
-    # Step 8: Confirm button
+    # Step 6: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with col2:
