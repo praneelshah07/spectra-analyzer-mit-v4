@@ -175,6 +175,10 @@ with col1:
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
 
+    # Ensure 'functional_groups' is initialized in session state
+    if 'functional_groups' not in st.session_state:
+        st.session_state['functional_groups'] = []  # Initialize the key if missing
+
     # UI Rearrangement
     # Step 1: Filter Selection
     use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
@@ -216,41 +220,47 @@ with col1:
     if ignore_q_branch:
         q_branch_threshold = st.number_input('Enter Q-branch peak threshold (e.g., 0.8 for ignoring peaks > 80% of the maximum):', value=0.8)
 
-    # Step 5: Checkboxes for Peak Finding and Sonogram
+    # Step 5: Enable Peak Finding and Labeling checkbox (create dropdown for prominent peaks slider and functional group labels)
     peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
+
+    # Add the slider and functional group options inside an expander, shown only when the checkbox is enabled
+    if peak_finding_enabled:
+        with st.expander("Peak Finding and Functional Group Options"):
+            # Slider for number of prominent peaks
+            num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+
+            # Background gas functional group labels
+            st.write("Background Gas Functional Group Labels")
+
+            # Form to input functional group data based on wavelength
+            with st.form(key='functional_group_form'):
+                fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
+                fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
+                add_fg = st.form_submit_button("Add Functional Group")
+
+            if add_fg:
+                # Only update session state, no plotting here
+                st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+
+            # Display existing functional group labels and allow deletion
+            st.write("Current Functional Group Labels:")
+            for i, fg in enumerate(st.session_state['functional_groups']):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                col1.write(f"Functional Group: {fg['Functional Group']}")
+                col2.write(f"Wavelength: {fg['Wavelength']} µm")
+                if col3.button(f"Delete", key=f"delete_fg_{i}"):
+                    st.session_state['functional_groups'].pop(i)
+
+    # Sonogram option (should always be visible)
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Step 6: Slider for number of peaks to detect, with focus on main peaks
-    num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+    # Confirm button at the bottom
+    st.markdown("<hr>", unsafe_allow_html=True)
+    confirm_button = st.button('Confirm Selection and Start Plotting', key="confirm")
 
-    # Step 7: Functional group input for background gas labeling (in wavelength)
-    st.write("Background Gas Functional Group Labels")
-
-    if 'functional_groups' not in st.session_state:
-        st.session_state['functional_groups'] = []
-
-    # Form to input functional group data based on wavelength
-    with st.form(key='functional_group_form'):
-        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-        fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
-        add_fg = st.form_submit_button("Add Functional Group")
-
-    if add_fg:
-        st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
-
-    # Display existing functional group labels and allow deletion
-    st.write("Current Functional Group Labels:")
-    for i, fg in enumerate(st.session_state['functional_groups']):
-        col1, col2, col3 = st.columns([2, 2, 1])
-        col1.write(f"Functional Group: {fg['Functional Group']}")
-        col2.write(f"Wavelength: {fg['Wavelength']} µm")
-        if col3.button(f"Delete", key=f"delete_fg_{i}"):
-            st.session_state['functional_groups'].pop(i)
-
-    # Step 8: Confirm button
-    confirm_button = st.button('Confirm Selection and Start Plotting')
-
+# Now ensure the entire plotting logic is inside col2 only
 with col2:
+    # Plotting triggered only by the "Confirm Selection and Start Plotting" button
     if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
             if plot_sonogram:
@@ -305,26 +315,22 @@ with col2:
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
                                     alpha=0.5, label=f"{smiles}")
 
-                    if peak_finding_enabled:
-                        # Detect peaks and retrieve peak properties like prominence
-                        peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
+                    # Detect peaks and retrieve peak properties like prominence
+                    peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
+                    
+                    # Sort the peaks by their prominence and select the top `num_peaks`
+                    if len(peaks) > 0:
+                        prominences = properties['prominences']
+                        peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
                         
-                        # Sort the peaks by their prominence and select the top `num_peaks`
-                        if len(peaks) > 0:
-                            prominences = properties['prominences']
-                            # Zip peaks with their corresponding prominences, then sort by prominence
-                            peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
-                            
-                            # Extract the top `num_peaks` most prominent peaks
-                            top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
+                        top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                            # Now label the top peaks
-                            for peak in top_peaks:
-                                peak_wavelength = x_axis[peak]
-                                peak_intensity = spectra[peak]
-                                # Label the peaks with wavelength
-                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                        # Now label the top peaks
+                        for peak in top_peaks:
+                            peak_wavelength = x_axis[peak]
+                            peak_intensity = spectra[peak]
+                            ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                                    fontsize=10, ha='center', color=color_options[i % len(color_options)])
 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
@@ -339,7 +345,6 @@ with col2:
                 major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
                 ax.set_xticks(major_ticks)
 
-                # Number of label matches
                 ax.set_xticklabels([str(tick) for tick in major_ticks])
 
                 ax.tick_params(direction="in",
