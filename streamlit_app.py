@@ -254,6 +254,7 @@ with col1:
     # Step 6: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
+# Ensure the plot always renders in col2
 with col2:
     if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
