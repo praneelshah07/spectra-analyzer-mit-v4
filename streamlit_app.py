@@ -251,12 +251,9 @@ with col1:
     # Sonogram checkbox added back
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Step 6: Confirm button
-    confirm_button = st.button('Confirm Selection and Start Plotting')
-
-# Ensure the plot always renders in col2
+# Now ensure the entire plotting logic is inside col2 only
 with col2:
-    if confirm_button:
+    if st.button('Confirm Selection and Start Plotting'):
         with st.spinner('Generating plots, this may take some time...'):
             if plot_sonogram:
                 intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
