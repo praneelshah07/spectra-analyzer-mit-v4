@@ -175,6 +175,10 @@ with col1:
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
 
+    # Ensure 'functional_groups' is initialized in session state
+    if 'functional_groups' not in st.session_state:
+        st.session_state['functional_groups'] = []  # Initialize the key if missing
+
     # UI Rearrangement
     # Step 1: Filter Selection
     use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
@@ -225,10 +229,6 @@ with col1:
 
         # Background gas functional group labels
         st.write("Background Gas Functional Group Labels")
-
-        # Ensure 'functional_groups' is initialized in session state
-        if 'functional_groups' not in st.session_state:
-            st.session_state['functional_groups'] = []  # Initialize the key if missing
 
         # Form to input functional group data based on wavelength
         with st.form(key='functional_group_form'):
