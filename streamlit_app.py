@@ -228,7 +228,7 @@ with col1:
 
         # Ensure 'functional_groups' is initialized in session state
         if 'functional_groups' not in st.session_state:
-            st.session_state['functional_groups'] = []
+            st.session_state['functional_groups'] = []  # Initialize the key if missing
 
         # Form to input functional group data based on wavelength
         with st.form(key='functional_group_form'):
