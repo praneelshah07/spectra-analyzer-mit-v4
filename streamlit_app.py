@@ -179,6 +179,47 @@ with col1:
     if 'functional_groups' not in st.session_state:
         st.session_state['functional_groups'] = []  # Initialize the key if missing
 
+    # UI Rearrangement
+    # Step 1: Filter Selection
+    use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
+    use_advanced_filter = st.checkbox('Apply Advanced Filtering')
+
+    # Ensure filtered_smiles is always initialized
+    filtered_smiles = data['SMILES'].unique()
+
+    # Step 2: Apply SMARTS filtering if enabled
+    if use_smarts_filter:
+        functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
+        if functional_group_smarts:
+            try:
+                filtered_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
+                st.write(f"Filtered dataset to {len(filtered_smiles)} molecules using SMARTS pattern.")
+            except Exception as e:
+                st.error(f"Invalid SMARTS pattern: {e}")
+
+    # Step 2 (Advanced): Apply advanced filtering if selected
+    if use_advanced_filter:
+        bond_input = st.text_input("Enter a bond type (e.g., C-C, C#C, C-H):", "")
+        if bond_input:
+            filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
+            st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
+
+    # Step 3: Select molecule by SMILES
+    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
+
+    # Step 4: Bin size input (only for wavelength)
+    bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
+
+    # Removed the restrictive range for bin sizes
+    bin_size = st.number_input('Enter bin size (resolution) in microns:', value=0.1)
+
+    # Add option to ignore Q-branch peaks during normalization
+    ignore_q_branch = st.checkbox('Ignore Q-branch for normalization', value=False)
+
+    q_branch_threshold = None
+    if ignore_q_branch:
+        q_branch_threshold = st.number_input('Enter Q-branch peak threshold (e.g., 0.8 for ignoring peaks > 80% of the maximum):', value=0.8)
+
     # Step 5: Enable Peak Finding and Labeling checkbox (create dropdown for prominent peaks slider and functional group labels)
     peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
 
@@ -201,21 +242,21 @@ with col1:
                 # Only update session state, no plotting here
                 st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
 
+            # Display existing functional group labels and allow deletion
+            st.write("Current Functional Group Labels:")
+            for i, fg in enumerate(st.session_state['functional_groups']):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                col1.write(f"Functional Group: {fg['Functional Group']}")
+                col2.write(f"Wavelength: {fg['Wavelength']} µm")
+                if col3.button(f"Delete", key=f"delete_fg_{i}"):
+                    st.session_state['functional_groups'].pop(i)
+
     # Sonogram option (should always be visible)
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
     # Confirm button at the bottom
     st.markdown("<hr>", unsafe_allow_html=True)
     confirm_button = st.button('Confirm Selection and Start Plotting', key="confirm")
-
-    # Step 6: Display the current functional group labels **outside** the dropdown
-    st.write("### Current Functional Group Labels:")
-    for i, fg in enumerate(st.session_state['functional_groups']):
-        col1_fg, col2_fg, col3_fg = st.columns([2, 2, 1])
-        col1_fg.write(f"Functional Group: {fg['Functional Group']}")
-        col2_fg.write(f"Wavelength: {fg['Wavelength']} µm")
-        if col3_fg.button(f"Delete", key=f"delete_fg_{i}"):
-            st.session_state['functional_groups'].pop(i)
 
 # Now ensure the entire plotting logic is inside col2 only
 with col2:
