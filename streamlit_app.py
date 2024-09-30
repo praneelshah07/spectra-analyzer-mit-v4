@@ -239,6 +239,7 @@ with col1:
                 add_fg = st.form_submit_button("Add Functional Group")
 
             if add_fg:
+                # Only update session state, no plotting here
                 st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
 
             # Display existing functional group labels and allow deletion
@@ -259,8 +260,8 @@ with col1:
 
 # Now ensure the entire plotting logic is inside col2 only
 with col2:
-    # Plotting triggered by functional group addition or confirmation button
-    if add_fg or confirm_button:
+    # Plotting triggered only by the "Confirm Selection and Start Plotting" button
+    if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
             if plot_sonogram:
                 intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
