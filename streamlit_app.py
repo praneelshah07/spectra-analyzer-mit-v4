@@ -15,6 +15,22 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+# Set page layout to 'wide' for full screen usage
+st.set_page_config(page_title="Spectra Visualization App", layout="wide")
+
+# Adding custom CSS to remove padding or adjust styling further
+st.markdown("""
+    <style>
+    .css-18e3th9 {
+        padding: 0px;
+    }
+    .css-1d391kg {
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Preloaded zip
 ZIP_URL = 'https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/ASM_Vapor_Spectra.csv.zip'
 
