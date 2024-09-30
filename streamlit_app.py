@@ -247,6 +247,9 @@ with col1:
             if col3.button(f"Delete", key=f"delete_fg_{i}"):
                 st.session_state['functional_groups'].pop(i)
 
+    # Sonogram checkbox added back
+    plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
+
     # Step 6: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
