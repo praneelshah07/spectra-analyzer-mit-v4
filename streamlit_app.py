@@ -319,20 +319,21 @@ with col2:
                     peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
                     
                     # Ensure peaks_with_prominences is properly populated and peaks exist
+                    peaks_with_prominences = []
                     if len(peaks) > 0:
                         prominences = properties['prominences']
                         peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
-                        
-                        # Check if the number of detected peaks is greater than num_peaks
-                        if len(peaks_with_prominences) > 0:
-                            top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                            # Now label the top peaks
-                            for peak in top_peaks:
-                                peak_wavelength = x_axis[peak]
-                                peak_intensity = spectra[peak]
-                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                    # Check if peaks_with_prominences is not empty and handle it
+                    if len(peaks_with_prominences) > 0:
+                        top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
+
+                        # Now label the top peaks
+                        for peak in top_peaks:
+                            peak_wavelength = x_axis[peak]
+                            peak_intensity = spectra[peak]
+                            ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                                    fontsize=10, ha='center', color=color_options[i % len(color_options)])
                     else:
                         st.warning(f"No peaks detected for {smiles}")
 
