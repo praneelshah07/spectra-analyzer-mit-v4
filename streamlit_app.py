@@ -18,7 +18,7 @@ from rdkit.Chem import AllChem
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
 
-# Adding custom CSS to style the banner and page
+# Adding custom CSS to style the banner, title, and description
 st.markdown("""
     <style>
     .banner {
@@ -27,15 +27,41 @@ st.markdown("""
         color: white;
         padding: 20px;
         text-align: center;
-        font-size: 32px;
+        font-size: 42px;  /* Increased font size */
         font-weight: bold;
+        margin-bottom: 20px;
+    }
+    .description {
+        font-size: 18px;  /* You can increase this for readability */
+        color: #333333;
         margin-bottom: 30px;
+        text-align: center;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
+
+# Display a description below the banner
+st.markdown("""
+    <div class="description">
+        <p>Welcome to the <strong>Spectra Visualization Tool</strong>. This tool is designed to help you analyze and visualize molecular spectra data 
+        for various chemical compounds.</p>
+        
+        <p>Here’s a breakdown of the app’s functionalities:</p>
+        <ul>
+            <li><strong>SMARTS Filtering:</strong> Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</li>
+            <li><strong>Advanced Filtering:</strong> Search for specific bond types such as C-C, C=C, or C-H. This helps you target molecules with specific bond configurations.</li>
+            <li><strong>Peak Detection:</strong> Enable this feature to automatically detect and label prominent peaks in the spectra. Customize the number of peaks to highlight.</li>
+            <li><strong>Background Gas Labels:</strong> Add functional group labels based on wavelengths for easier identification of background gases in your spectra.</li>
+            <li><strong>Sonogram Plot:</strong> View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</li>
+        </ul>
+        
+        <p>To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data.</p>
+        <p>Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Initialize session state for functional groups
 if 'functional_groups' not in st.session_state:
