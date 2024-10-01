@@ -34,7 +34,7 @@ st.markdown("""
     .description {
         font-size: 24px;  /* You can increase this for readability */
         color: #333333;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
         text-align: left;
     }
     </style>
