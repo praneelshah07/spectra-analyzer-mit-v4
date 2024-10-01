@@ -236,6 +236,7 @@ with col1:
             # Step 7: Functional group input for background gas labeling (in wavelength)
             st.write("Background Gas Functional Group Labels")
 
+            # Ensure the session state for 'functional_groups' is initialized
             if 'functional_groups' not in st.session_state:
                 st.session_state['functional_groups'] = []
 
