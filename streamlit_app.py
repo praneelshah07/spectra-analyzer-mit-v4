@@ -145,7 +145,7 @@ def compute_serial_matrix(dist_mat, method="ward"):
 st.title("Spectra Visualization App")
 
 # Layout separation between input controls and plot
-col1, col2 = st.columns([1, 2])  # 1:2 ratio between input and plot
+col1, main_col2 = st.columns([1, 2])  # Rename the right column to main_col2 to avoid conflict
 
 with col1:
     st.header("Input Controls")
@@ -258,16 +258,16 @@ with col1:
     # Display existing functional group labels and allow deletion
     st.write("Current Functional Group Labels:")
     for i, fg in enumerate(st.session_state['functional_groups']):
-        col1, col2, col3 = st.columns([2, 2, 1])
-        col1.write(f"Functional Group: {fg['Functional Group']}")
-        col2.write(f"Wavelength: {fg['Wavelength']} µm")
-        if col3.button(f"Delete", key=f"delete_fg_{i}"):
+        label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
+        label_col1.write(f"Functional Group: {fg['Functional Group']}")
+        label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
+        if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
             st.session_state['functional_groups'].pop(i)
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
-with col2:
+with main_col2:  # Use the main_col2 variable for the plot display to avoid conflicts
     if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
             if plot_sonogram:
