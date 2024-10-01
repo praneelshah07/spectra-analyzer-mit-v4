@@ -23,11 +23,11 @@ st.markdown("""
     <style>
     .banner {
         width: 100%;
-        background-color: #4CAF50;  /* You can change the color */
+        background-color: #89CFF0;  /* You can change the color */
         color: white;
         padding: 20px;
         text-align: center;
-        font-size: 42px;  /* Increased font size */
+        font-size: 45px;  /* Increased font size */
         font-weight: bold;
         margin-bottom: 20px;
     }
@@ -52,8 +52,8 @@ st.markdown("""
         Here’s a breakdown of the app’s functionalities:
         
         SMARTS Filtering: Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.
-        Advanced Filtering: Search for specific bond types or functional groups such as C-C, O-H, or C-H. This helps you target molecules with specific bond configurations.
-        Binning Feature: Bin a certain 
+        Advanced Filtering: Search for specific functional groups such as C=C, O-H, or C-H. Enter the group to refine the dataset.
+        Binning Feature: Bin a certain amount of data within one datapoint to simplify the plot produced.  
         Peak Detection: Enable this feature to automatically detect and label prominent peaks in the spectra. Customize the number of peaks to highlight.
         Background Gas Labels: Add functional group labels based on wavelengths for easier identification of background gases in your spectra.
         Sonogram Plot: View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.
