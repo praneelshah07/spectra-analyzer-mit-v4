@@ -33,8 +33,7 @@ st.markdown("""
     }
     .description {
         font-size: 22px;  /* You can increase this for readability */
-        background-color: #EFDDDF
-        color: #EFDDDF;
+        color: #333333;
         margin-bottom: 10px;
         text-align: left;
     }
@@ -51,7 +50,6 @@ st.markdown("""
         for various chemical compounds.
         
         Here’s a breakdown of the app’s functionalities:
-        
         SMARTS Filtering: Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.
         Advanced Filtering: Search for specific functional groups such as C=C, O-H, or C-H. Enter the group to refine the dataset.
         Binning Feature: Bin a certain amount of data within one datapoint to simplify the plot produced.  
