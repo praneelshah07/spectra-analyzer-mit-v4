@@ -69,7 +69,7 @@ with col1intro:
 
 with col2intro:
     # Display the image from the GitHub repository
-    st.image('https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/funnycartoon.png', width=300)
+    st.image('https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/funnycartoon.png', use_column_width=True)
 
 # Initialize session state for functional groups
 if 'functional_groups' not in st.session_state:
