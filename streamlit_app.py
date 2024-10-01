@@ -18,18 +18,24 @@ from rdkit.Chem import AllChem
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
 
-# Adding custom CSS to remove padding or adjust styling further
+# Adding custom CSS to style the banner and page
 st.markdown("""
     <style>
-    .css-18e3th9 {
-        padding: 0px;
-    }
-    .css-1d391kg {
-        padding-top: 0px;
-        padding-bottom: 0px;
+    .banner {
+        width: 100%;
+        background-color: #4CAF50;  /* You can change the color */
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 32px;
+        font-weight: bold;
+        margin-bottom: 30px;
     }
     </style>
     """, unsafe_allow_html=True)
+
+# Display the banner across the top
+st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
 # Initialize session state for functional groups
 if 'functional_groups' not in st.session_state:
@@ -145,10 +151,7 @@ def compute_serial_matrix(dist_mat, method="ward"):
     ordered_dist_mat = dist_mat[res_order, :][:, res_order]
     return ordered_dist_mat, res_order, res_linkage
 
-# Set up two-column layout
-st.title("Spectra Visualization App")
-
-# Layout separation between input controls and plot
+# Set up two-column layout below the banner
 col1, main_col2 = st.columns([1, 2])
 
 with col1:
