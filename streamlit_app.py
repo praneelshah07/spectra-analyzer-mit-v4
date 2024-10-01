@@ -65,12 +65,11 @@ with col1intro:
             To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options 
             that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.
         </div>
-        """, unsafe_allow_html=True, use_column_width=True)
+        """, unsafe_allow_html=True)
 
 with col2intro:
     # Display the image from the GitHub repository
-    st.image('https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/funnycartoon.png')
-
+    st.image('https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/funnycartoon.png', use_column_width=True)
 
 # Initialize session state for functional groups
 if 'functional_groups' not in st.session_state:
