@@ -33,6 +33,8 @@ st.markdown("""
     }
     .description {
         font-size: 18px;  /* You can increase this for readability */
+        font-family: 'Arial', sans-serif;  /* You can change the font family */
+        line-height: 1.5
         color: #333333;
         margin-bottom: 10px;
         text-align: left;
