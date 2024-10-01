@@ -44,7 +44,7 @@ st.markdown("""
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
 # Display a two-column layout: image on the left, description on the right
-col1intro, col2intro = st.columns([1, 2])  # Adjust column ratio for appropriate spacing
+col1intro, col2intro = st.columns([3, 1])  # Adjust column ratio for appropriate spacing
 
 with col1intro: 
     # Display a description below the banner
