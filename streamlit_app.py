@@ -33,6 +33,7 @@ st.markdown("""
     }
     .description {
         font-size: 22px;  /* You can increase this for readability */
+        background-color: #EFDDDF
         color: #333333;
         margin-bottom: 10px;
         text-align: left;
