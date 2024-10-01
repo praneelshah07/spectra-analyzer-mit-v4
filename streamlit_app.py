@@ -31,6 +31,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Initialize session state for functional groups
+if 'functional_groups' not in st.session_state:
+    st.session_state['functional_groups'] = []
+
 # Preloaded zip
 ZIP_URL = 'https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/ASM_Vapor_Spectra.csv.zip'
 
@@ -235,10 +239,6 @@ with col1:
             
             # Step 7: Functional group input for background gas labeling (in wavelength)
             st.write("Background Gas Functional Group Labels")
-
-            # Ensure the session state for 'functional_groups' is initialized
-            if 'functional_groups' not in st.session_state:
-                st.session_state['functional_groups'] = []
 
             # Form to input functional group data based on wavelength
             with st.form(key='functional_group_form'):
