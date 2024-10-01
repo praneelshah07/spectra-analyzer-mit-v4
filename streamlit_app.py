@@ -97,19 +97,36 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
             filtered_smiles.append(smiles)
     return filtered_smiles
 
-# Function for Advanced Filtering based on input functional groups, adding hydrogens for C-H detection
+# Enhanced Advanced Filtering with Error Handling
 @st.cache_data
 def advanced_filtering_by_bond(smiles_list, bond_pattern):
     filtered_smiles = []
+    
+    # Ensure the bond pattern is recognized and valid
     if bond_pattern == "C-H":
         bond_smarts = "[C][H]"  # SMARTS for C-H bond
     else:
-        bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
+        try:
+            bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
+            if not Chem.MolFromSmarts(bond_smarts):
+                raise ValueError(f"Invalid SMARTS pattern: {bond_smarts}")
+        except Exception as e:
+            st.error(f"Error with SMARTS pattern: {e}")
+            return filtered_smiles  # Return an empty list in case of error
+    
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
-        mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens
-        if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
-            filtered_smiles.append(smiles)
+        
+        if mol:
+            mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens
+            
+            if mol_with_h and Chem.MolFromSmarts(bond_smarts):
+                # Now check for substructure matches
+                if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
+                    filtered_smiles.append(smiles)
+        else:
+            st.warning(f"Could not process SMILES: {smiles}")
+    
     return filtered_smiles
 
 # Compute the distance matrix
