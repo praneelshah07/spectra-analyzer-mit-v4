@@ -32,7 +32,7 @@ st.markdown("""
         margin-bottom: 20px;
     }
     .description {
-        font-size: 18px;  /* You can increase this for readability */
+        font-size: 24px;  /* You can increase this for readability */
         color: #333333;
         margin-bottom: 30px;
         text-align: left;
