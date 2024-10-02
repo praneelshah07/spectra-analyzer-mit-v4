@@ -315,14 +315,17 @@ with col1:
                 if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
                     st.session_state['functional_groups'].pop(i)
 
-with main_col2:
-    st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
-
     # Step 6: Plot Sonogram (Outside of Expander)
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
+    # Add dropdown for color selection
+    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
+
+with main_col2:
+    st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
 
     if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
@@ -352,8 +355,16 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
-                random.shuffle(color_options)
+                color_map = {
+                    'Red': 'r',
+                    'Green': 'g',
+                    'Blue': 'b',
+                    'Cyan': 'c',
+                    'Magenta': 'm',
+                    'Yellow': 'y',
+                    'Black': 'k'
+                }
+                selected_color = color_map[color_selection]
 
                 target_spectra = {}
                 for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
@@ -373,10 +384,9 @@ with main_col2:
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
-                for i, smiles in enumerate(target_spectra):
+                for smiles in target_spectra:
                     spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
-                                    alpha=0.5, label=f"{smiles}")
+                    ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
@@ -397,7 +407,7 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                 # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                                        fontsize=10, ha='center', color=selected_color)
 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
