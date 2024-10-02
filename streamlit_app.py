@@ -278,8 +278,8 @@ with col1:
             filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
             st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
 
-    # Step 3: Select up to 6 molecules by SMILES
-    selected_smiles = st.multiselect('Select up to 6 molecules by SMILES to highlight:', filtered_smiles, max_selections=6)
+    # Step 3: Select molecule by SMILES
+    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
     # Step 4: Bin size input (only for wavelength)
     bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
@@ -318,12 +318,8 @@ with col1:
     # Step 6: Plot Sonogram (Outside of Expander)
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Add a color selection dropdown for each selected molecule
-    selected_colors = []
-    if selected_smiles:
-        for i, smile in enumerate(selected_smiles):
-            selected_color = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
-            selected_colors.append(selected_color)
+    # Add dropdown for color selection
+    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
@@ -331,100 +327,118 @@ with col1:
 with main_col2:
     st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
 
-    if confirm_button and selected_smiles:
+    if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
-            fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
-            wavenumber = np.arange(4000, 500, -1)
-            wavelength = 10000 / wavenumber
+            if plot_sonogram:
+                intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
+                if len(intensity_data) > 1:
+                    dist_mat = squareform(pdist(intensity_data))
+                    ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
 
-            color_map = {
-                'Red': 'r',
-                'Green': 'g',
-                'Blue': 'b',
-                'Cyan': 'c',
-                'Magenta': 'm',
-                'Yellow': 'y',
-                'Black': 'k'
-            }
+                    fig, ax = plt.subplots(figsize=(12, 12))
+                    ratio = int(len(intensity_data[0]) / len(intensity_data))
+                    ax.imshow(np.array(intensity_data)[res_order], aspect=ratio, extent=[4000, 500, len(ordered_dist_mat), 0])
+                    ax.set_xlabel("Wavenumber")
+                    ax.set_ylabel("Molecules")
 
-            # Plot all molecules as shaded background graphs
-            for smiles, spectra in data[['SMILES', 'Raw_Spectra_Intensity']].values:
-                spectra = np.array(spectra)
+                    st.pyplot(fig)
+                    plt.clf()
 
-                # Apply binning if selected
-                if bin_type != 'None':
-                    spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    st.download_button(label="Download Sonogram as PNG", data=buf, file_name="sonogram.png", mime="image/png")
                 else:
-                    spectra = spectra / np.max(spectra)  # Normalize if no binning
-                    x_axis = wavelength
+                    st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
+            else:
+                fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
+                wavenumber = np.arange(4000, 500, -1)
+                wavelength = 10000 / wavenumber
 
-                ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)  # Background graphs with low opacity
+                color_map = {
+                    'Red': 'r',
+                    'Green': 'g',
+                    'Blue': 'b',
+                    'Cyan': 'c',
+                    'Magenta': 'm',
+                    'Yellow': 'y',
+                    'Black': 'k'
+                }
+                selected_color = color_map[color_selection]
 
-            # Now plot selected molecules with custom colors
-            for i, smiles in enumerate(selected_smiles):
-                color = color_map[selected_colors[i]]
-                spectra = data[data['SMILES'] == smiles]['Raw_Spectra_Intensity'].values[0]
+                target_spectra = {}
+                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
+                    if smiles in selected_smiles:
+                        # Apply binning if selected
+                        if bin_type != 'None':
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+                        else:
+                            spectra = spectra / np.max(spectra)  # Normalize if no binning
+                            x_axis = wavelength
+                        target_spectra[smiles] = spectra
+                    else:
+                        if bin_type != 'None':
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+                        else:
+                            spectra = spectra / np.max(spectra)  # Normalize if no binning
+                            x_axis = wavelength
+                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
-                # Apply binning if selected
-                if bin_type != 'None':
-                    spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
-                else:
-                    spectra = spectra / np.max(spectra)  # Normalize if no binning
-                    x_axis = wavelength
+                for smiles in target_spectra:
+                    spectra = target_spectra[smiles]
+                    ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
 
-                ax.fill_between(x_axis, 0, spectra, color=color, alpha=0.5, label=f"{smiles}")
-
-                if peak_finding_enabled:
-                    # Detect peaks and retrieve peak properties like prominence
-                    peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
-                    
-                    # Sort the peaks by their prominence and select the top `num_peaks`
-                    if len(peaks) > 0:
-                        prominences = properties['prominences']
-                        # Zip peaks with their corresponding prominences, then sort by prominence
-                        peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
+                    if peak_finding_enabled:
+                        # Detect peaks and retrieve peak properties like prominence
+                        peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
                         
-                        # Extract the top `num_peaks` most prominent peaks
-                        top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
+                        # Sort the peaks by their prominence and select the top `num_peaks`
+                        if len(peaks) > 0:
+                            prominences = properties['prominences']
+                            # Zip peaks with their corresponding prominences, then sort by prominence
+                            peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
+                            
+                            # Extract the top `num_peaks` most prominent peaks
+                            top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                        # Now label the top peaks
-                        for peak in top_peaks:
-                            peak_wavelength = x_axis[peak]
-                            peak_intensity = spectra[peak]
-                            # Label the peaks with wavelength
-                            ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                    fontsize=10, ha='center', color=color)
+                            # Now label the top peaks
+                            for peak in top_peaks:
+                                peak_wavelength = x_axis[peak]
+                                peak_intensity = spectra[peak]
+                                # Label the peaks with wavelength
+                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                                        fontsize=10, ha='center', color=selected_color)
 
-            # Add functional group labels for background gases based on wavelength
-            for fg in st.session_state['functional_groups']:
-                fg_wavelength = fg['Wavelength']
-                fg_label = fg['Functional Group']
-                ax.axvline(fg_wavelength, color='grey', linestyle='--')
-                ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
+                # Add functional group labels for background gases based on wavelength
+                for fg in st.session_state['functional_groups']:
+                    fg_wavelength = fg['Wavelength']
+                    fg_label = fg['Functional Group']
+                    ax.axvline(fg_wavelength, color='grey', linestyle='--')
+                    ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
-            # Customize plot
-            ax.set_xlim([x_axis.min(), x_axis.max()])
+                # Customize plot
+                ax.set_xlim([x_axis.min(), x_axis.max()])
 
-            major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
-            ax.set_xticks(major_ticks)
+                major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
+                ax.set_xticks(major_ticks)
 
-            # Number of label matches
-            ax.set_xticklabels([str(tick) for tick in major_ticks])
+                # Number of label matches
+                ax.set_xticklabels([str(tick) for tick in major_ticks])
 
-            ax.tick_params(direction="in",
-                labelbottom=True, labeltop=False, labelleft=True, labelright=False,
-                bottom=True, top=True, left=True, right=True)
+                ax.tick_params(direction="in",
+                    labelbottom=True, labeltop=False, labelleft=True, labelright=False,
+                    bottom=True, top=True, left=True, right=True)
 
-            ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-            ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+                ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+                ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
-            if selected_smiles:
-                ax.legend()
+                if selected_smiles:
+                    ax.legend()
 
-            st.pyplot(fig)
-    
-            # Download button for the spectra plot
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png')
-            buf.seek(0)
-            st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
+                st.pyplot(fig)
+        
+                # Download button for the spectra plot
+                buf = io.BytesIO()
+                fig.savefig(buf, format='png')
+                buf.seek(0)
+                st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
