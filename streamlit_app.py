@@ -37,6 +37,26 @@ st.markdown("""
         margin-bottom: 10px;
         text-align: left;
     }
+    .input-controls-header {
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #f0f8ff;
+        border: 2px solid #89CFF0;
+        border-radius: 10px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .graph-header {
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #f0f8ff;
+        border: 2px solid #89CFF0;
+        border-radius: 10px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -189,7 +209,7 @@ def compute_serial_matrix(dist_mat, method="ward"):
 col1, main_col2 = st.columns([1, 2])
 
 with col1:
-    st.header("Input Controls")
+    st.markdown('<div class="input-controls-header">Input Controls</div>', unsafe_allow_html=True)
 
     # Load preloaded data from ZIP
     data = load_data_from_zip(ZIP_URL)
@@ -295,13 +315,15 @@ with col1:
                 if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
                     st.session_state['functional_groups'].pop(i)
 
+with main_col2:
+    st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
+
     # Step 6: Plot Sonogram (Outside of Expander)
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
-with main_col2:  # Use the main_col2 variable for the plot display to avoid conflicts
     if confirm_button:
         with st.spinner('Generating plots, this may take some time...'):
             if plot_sonogram:
@@ -338,14 +360,14 @@ with main_col2:  # Use the main_col2 variable for the plot display to avoid conf
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
                     else:
                         if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
