@@ -43,8 +43,8 @@ st.markdown("""
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
-# Display a two-column layout: image on the left, description on the right
-col1intro, col2intro = st.columns([3.5, 1])  # Adjust column ratio for appropriate spacing
+# Display a two-column layout: text on the left, image on the right
+col1intro, col2intro = st.columns([1, 1])  # Adjust column ratio for more balanced spacing
 
 with col1intro: 
     # Display a description below the banner
@@ -186,7 +186,7 @@ def compute_serial_matrix(dist_mat, method="ward"):
     return ordered_dist_mat, res_order, res_linkage
 
 # Set up two-column layout below the banner
-col1, main_col2 = st.columns([1, 2])
+col1, main_col2 = st.columns([1, 2])  # Adjusted for better alignment of text and graph
 
 with col1:
     st.header("Input Controls")
