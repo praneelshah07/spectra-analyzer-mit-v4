@@ -278,8 +278,8 @@ with col1:
             filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
             st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
 
-    # Step 3: Select molecule by SMILES
-    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
+    # Step 3: Select up to 6 molecules by SMILES
+    selected_smiles = st.multiselect('Select up to 6 molecules by SMILES to highlight:', filtered_smiles, max_selections=6)
 
     # Step 4: Bin size input (only for wavelength)
     bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
@@ -318,8 +318,12 @@ with col1:
     # Step 6: Plot Sonogram (Outside of Expander)
     plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Add dropdown for color selection
-    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+    # Add a color selection dropdown for each selected molecule
+    selected_colors = []
+    if selected_smiles:
+        for i, smile in enumerate(selected_smiles):
+            selected_color = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+            selected_colors.append(selected_color)
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
@@ -327,10 +331,10 @@ with col1:
 with main_col2:
     st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
 
-    if confirm_button:
+    if confirm_button and selected_smiles:
         with st.spinner('Generating plots, this may take some time...'):
             if plot_sonogram:
-                intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
+                intensity_data = np.array(data[data['SMILES'].isin(selected_smiles)]['Raw_Spectra_Intensity'].tolist())
                 if len(intensity_data) > 1:
                     dist_mat = squareform(pdist(intensity_data))
                     ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
@@ -364,29 +368,21 @@ with main_col2:
                     'Yellow': 'y',
                     'Black': 'k'
                 }
-                selected_color = color_map[color_selection]
 
                 target_spectra = {}
-                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
-                    if smiles in selected_smiles:
-                        # Apply binning if selected
-                        if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
-                        else:
-                            spectra = spectra / np.max(spectra)  # Normalize if no binning
-                            x_axis = wavelength
-                        target_spectra[smiles] = spectra
-                    else:
-                        if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
-                        else:
-                            spectra = spectra / np.max(spectra)  # Normalize if no binning
-                            x_axis = wavelength
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+                for i, smiles in enumerate(selected_smiles):
+                    color = color_map[selected_colors[i]]
+                    spectra = data[data['SMILES'] == smiles]['Raw_Spectra_Intensity'].values[0]
 
-                for smiles in target_spectra:
-                    spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
+                    # Apply binning if selected
+                    if bin_type != 'None':
+                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+                    else:
+                        spectra = spectra / np.max(spectra)  # Normalize if no binning
+                        x_axis = wavelength
+                    target_spectra[smiles] = spectra
+
+                    ax.fill_between(x_axis, 0, spectra, color=color, alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
@@ -407,7 +403,7 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                 # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=selected_color)
+                                        fontsize=10, ha='center', color=color)
 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
