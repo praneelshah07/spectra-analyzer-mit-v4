@@ -302,32 +302,33 @@ with col1:
         
             # Step 5: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
             peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
-        
+            
             if peak_finding_enabled:
-                with st.expander("Peak Detection and Background Gas Labels"):
-                    num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
-                    
-                    # Step 7: Functional group input for background gas labeling (in wavelength)
-                    st.write("Background Gas Functional Group Labels")
-        
-                    # Form to input functional group data based on wavelength
-                    with st.form(key='functional_group_form'):
-                        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-                        fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
-                        add_fg = st.form_submit_button("Add Functional Group")
-        
-                    if add_fg:
-                        st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
-        
-                    # Display existing functional group labels and allow deletion
-                    st.write("Current Functional Group Labels:")
-                    for i, fg in enumerate(st.session_state['functional_groups']):
-                        label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
-                        label_col1.write(f"Functional Group: {fg['Functional Group']}")
-                        label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
-                        if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
-                            st.session_state['functional_groups'].pop(i)
-        
+                # Remove the nested expander, just show this section without nesting
+                st.write("Peak Detection and Background Gas Labels")
+                num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+            
+                # Step 7: Functional group input for background gas labeling (in wavelength)
+                st.write("Background Gas Functional Group Labels")
+            
+                # Form to input functional group data based on wavelength
+                with st.form(key='functional_group_form'):
+                    fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
+                    fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
+                    add_fg = st.form_submit_button("Add Functional Group")
+            
+                if add_fg:
+                    st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+            
+                # Display existing functional group labels and allow deletion
+                st.write("Current Functional Group Labels:")
+                for i, fg in enumerate(st.session_state['functional_groups']):
+                    label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
+                    label_col1.write(f"Functional Group: {fg['Functional Group']}")
+                    label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
+                    if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
+                        st.session_state['functional_groups'].pop(i)
+
             # Step 6: Plot Sonogram (Outside of Expander)
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
         
