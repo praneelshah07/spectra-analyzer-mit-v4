@@ -57,6 +57,7 @@ st.markdown("""
         line-height: 1.2;  /* Improves readability */
         font-weight: bold;
         text-align: center;
+        background-color: #f0f8ff;
     }
 
     .description {
@@ -80,7 +81,7 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
         <div class="description">   
-        <p>Here is a breakdown of all the functionalities within the app:</p>
+        <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
         
         <p><b>SMARTS Filtering:</b> 
         Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
