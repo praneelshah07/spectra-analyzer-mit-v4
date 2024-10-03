@@ -91,26 +91,7 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-    <div class="description">
-        <strong>Welcome to the Spectra Visualization Tool</strong><br><br>
-        This tool is designed to help you analyze and visualize molecular spectra data for various chemical compounds.
-        
-        <br><br><strong>Here’s a breakdown of the app’s functionalities:</strong>
-        <ul>
-            <li><strong>SMARTS Filtering</strong>: Filter molecules by their structural properties using a SMARTS pattern.</li>
-            <li><strong>Advanced Filtering</strong>: Search for specific functional groups such as O-H, or C-H.</li>
-            <li><strong>Binning Feature</strong>: Bin a certain amount of data within one datapoint to simplify the plot produced.</li>
-            <li><strong>Peak Detection</strong>: Enable this feature to automatically detect and label prominent peaks in the spectra.</li>
-            <li><strong>Background Gas Labels</strong>: Add functional group labels based on wavelengths for easier identification of background gases.</li>
-            <li><strong>Sonogram Plot</strong>: View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences.</li>
-        </ul>
-        
-        <br><br><strong>Getting Started:</strong>
-        <ul>
-            <li>Use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data.</li>
-            <li>Select the options that best fit your analysis needs and confirm your selection to view the corresponding plots and download them as needed.</li>
-        </ul>
-    </div>
+  hello
     """, unsafe_allow_html=True)
 
 
