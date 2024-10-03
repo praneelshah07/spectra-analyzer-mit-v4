@@ -53,7 +53,7 @@ st.markdown("""
     }
 
     .sidebar {
-        font-size: 4px;  /* Sidebar font size */
+        font-size: 16px;  /* Sidebar font size */
         line-height: 1.6;  /* Improves readability */
         color: #333333;
         background-color: #f9f9f9;
@@ -84,8 +84,7 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
         <div class="sidebar">
-        Welcome to the Spectra Visualization Tool. This tool is designed to help you analyze and visualize molecular spectra data 
-        for various chemical compounds.
+        Welcome to the Spectra Visualization Tool.
             
         Here’s a breakdown of the app’s functionalities:
         
