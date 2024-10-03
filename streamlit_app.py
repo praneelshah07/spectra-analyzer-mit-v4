@@ -293,9 +293,6 @@ with col1:
             if bond_input:
                 filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
                 st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
-
-        # Step 1: Select molecule by SMILES
-        selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
     
         # Step 4: Bin size input (only for wavelength)
         bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
@@ -334,6 +331,8 @@ with col1:
             # Step 6: Plot Sonogram (Outside of Expander)
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
+    # The main Step 1: Select molecule by SMILES
+    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
     # Add dropdown for color selection
     color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
