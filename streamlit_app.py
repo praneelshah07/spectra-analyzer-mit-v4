@@ -53,10 +53,9 @@ st.markdown("""
     }
 
     .sidebar {
-        font-size: 18px;  /* Sidebar font size */
+        font-size: 20px;  /* Sidebar font size */
         line-height: 1.3;  /* Improves readability */
         font-weight: bold;
-        text-align: center;
     }
 
     .description {
@@ -70,18 +69,6 @@ st.markdown("""
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
 
-    /* Remove list marker margins */
-    .sidebar ul {
-        padding-left: 20px;
-    }
-    .sidebar ul li {
-        margin-bottom: 10px;
-    }
-
-    /* Ensure text wraps properly */
-    .sidebar p, .sidebar li {
-        word-wrap: break-word;
-    }
     </style>
     """, unsafe_allow_html=True)
 
