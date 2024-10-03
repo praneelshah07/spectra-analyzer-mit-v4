@@ -57,7 +57,6 @@ st.markdown("""
         line-height: 1.2;  /* Improves readability */
         font-weight: bold;
         text-align: center;
-        background-color: #f0f8ff;
     }
 
     .description {
