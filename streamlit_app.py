@@ -53,14 +53,20 @@ st.markdown("""
     }
 
     .sidebar {
-        font-size: 16px;  /* Sidebar font size */
+        font-size: 20px;  /* Sidebar font size */
         line-height: 1.6;  /* Improves readability */
+    }
+
+    .description {
+        font-size: 14px;  /* Sidebar font size */
+        line-height: 1.4;  /* Improves readability */
         color: #333333;
         background-color: #f9f9f9;
         padding: 15px;
         border-radius: 10px;
         border: 1px solid #ddd;  /* Subtle border */
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        
     }
 
     /* Remove list marker margins */
@@ -83,8 +89,8 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool.
-            
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
+        <div class="description">   
         Here’s a breakdown of the app’s functionalities:
         
         SMARTS Filtering: Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.
@@ -102,7 +108,7 @@ st.sidebar.markdown("""
         Getting Started
         
         To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.
-    
+        </div>
     """, unsafe_allow_html=True)
 
 
