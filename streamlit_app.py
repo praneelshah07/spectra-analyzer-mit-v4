@@ -83,8 +83,7 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar">
-        Welcome to the Spectra Visualization Tool.
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
             
         Here’s a breakdown of the app’s functionalities:
         
@@ -103,7 +102,7 @@ st.sidebar.markdown("""
         Getting Started
         
         To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.
-    </div>
+    
     """, unsafe_allow_html=True)
 
 
