@@ -71,15 +71,15 @@ st.markdown("""
     }
 
     /* Remove list marker margins */
-    .sidebar .description ul {
+    .sidebar ul {
         padding-left: 20px;
     }
-    .sidebar .description ul li {
+    .sidebar ul li {
         margin-bottom: 10px;
     }
 
     /* Ensure text wraps properly */
-    .sidebar .description p, .sidebar .description li {
+    .sidebar p, .sidebar li {
         word-wrap: break-word;
     }
     </style>
