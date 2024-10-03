@@ -268,70 +268,72 @@ with col1:
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
 
-    # UI Rearrangement
-    # Step 1: Filter Selection
-    use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
-    use_advanced_filter = st.checkbox('Apply Advanced Filtering')
+    # UI Rearrangement with expander
+    with st.expander("Advanced Filtration Metrics"):
+        # Step 1: Filter Selection
+        use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
+        use_advanced_filter = st.checkbox('Apply Advanced Filtering')
+    
+        # Ensure filtered_smiles is always initialized
+        filtered_smiles = data['SMILES'].unique()
+    
+        # Step 2: Apply SMARTS filtering if enabled
+        if use_smarts_filter:
+            functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
+            if functional_group_smarts:
+                try:
+                    filtered_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
+                    st.write(f"Filtered dataset to {len(filtered_smiles)} molecules using SMARTS pattern.")
+                except Exception as e:
+                    st.error(f"Invalid SMARTS pattern: {e}")
+    
+        # Step 2 (Advanced): Apply advanced filtering if selected
+        if use_advanced_filter:
+            bond_input = st.text_input("Enter a bond type (e.g., C-C, C#C, C-H):", "")
+            if bond_input:
+                filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
+                st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
+    
+        # Step 3: Select molecule by SMILES
+        selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
+    
+        # Step 4: Bin size input (only for wavelength)
+        bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
+    
+        # Removed the restrictive range for bin sizes
+        bin_size = st.number_input('Enter bin size (resolution) in microns:', value=0.1)
+    
+        # Step 5: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
+        peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
 
-    # Ensure filtered_smiles is always initialized
-    filtered_smiles = data['SMILES'].unique()
+        if peak_finding_enabled:
+            with st.expander("Peak Detection and Background Gas Labels"):
+                num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+                
+                # Step 7: Functional group input for background gas labeling (in wavelength)
+                st.write("Background Gas Functional Group Labels")
+    
+                # Form to input functional group data based on wavelength
+                with st.form(key='functional_group_form'):
+                    fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
+                    fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
+                    add_fg = st.form_submit_button("Add Functional Group")
+    
+                if add_fg:
+                    st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+    
+                # Display existing functional group labels and allow deletion
+                st.write("Current Functional Group Labels:")
+                for i, fg in enumerate(st.session_state['functional_groups']):
+                    label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
+                    label_col1.write(f"Functional Group: {fg['Functional Group']}")
+                    label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
+                    if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
+                        st.session_state['functional_groups'].pop(i)
 
-    # Step 2: Apply SMARTS filtering if enabled
-    if use_smarts_filter:
-        functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
-        if functional_group_smarts:
-            try:
-                filtered_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
-                st.write(f"Filtered dataset to {len(filtered_smiles)} molecules using SMARTS pattern.")
-            except Exception as e:
-                st.error(f"Invalid SMARTS pattern: {e}")
+            # Step 6: Plot Sonogram (Outside of Expander)
+            plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Step 2 (Advanced): Apply advanced filtering if selected
-    if use_advanced_filter:
-        bond_input = st.text_input("Enter a bond type (e.g., C-C, C#C, C-H):", "")
-        if bond_input:
-            filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
-            st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
-
-    # Step 3: Select molecule by SMILES
-    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
-
-    # Step 4: Bin size input (only for wavelength)
-    bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
-
-    # Removed the restrictive range for bin sizes
-    bin_size = st.number_input('Enter bin size (resolution) in microns:', value=0.1)
-
-    # Step 5: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
-    peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
-
-    if peak_finding_enabled:
-        with st.expander("Peak Detection and Background Gas Labels"):
-            num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
-            
-            # Step 7: Functional group input for background gas labeling (in wavelength)
-            st.write("Background Gas Functional Group Labels")
-
-            # Form to input functional group data based on wavelength
-            with st.form(key='functional_group_form'):
-                fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-                fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
-                add_fg = st.form_submit_button("Add Functional Group")
-
-            if add_fg:
-                st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
-
-            # Display existing functional group labels and allow deletion
-            st.write("Current Functional Group Labels:")
-            for i, fg in enumerate(st.session_state['functional_groups']):
-                label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
-                label_col1.write(f"Functional Group: {fg['Functional Group']}")
-                label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
-                if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
-                    st.session_state['functional_groups'].pop(i)
-
-    # Step 6: Plot Sonogram (Outside of Expander)
-    plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
     # Add dropdown for color selection
     color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
