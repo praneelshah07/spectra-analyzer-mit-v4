@@ -102,9 +102,8 @@ st.sidebar.markdown("""
             
         Getting Started
         
-        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select 
-        
-        the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.
+        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.
+    </div>
     """, unsafe_allow_html=True)
 
 
