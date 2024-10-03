@@ -53,8 +53,10 @@ st.markdown("""
     }
 
     .sidebar {
-        font-size: 17px;  /* Sidebar font size */
+        font-size: 18px;  /* Sidebar font size */
         line-height: 1.3;  /* Improves readability */
+        font-weight: bold;
+        text-align: center;
     }
 
     .description {
@@ -66,7 +68,6 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #ddd;  /* Subtle border */
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-        
     }
 
     /* Remove list marker margins */
@@ -92,26 +93,26 @@ st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. Here is a breakdown of the app’s functionalities: </div>
         <div class="description">   
         
-        SMARTS Filtering: 
-        Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.
+        <p>SMARTS Filtering:</p> 
+        <p>Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
         
-        Advanced Filtering: 
-        Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset.
+        <p>Advanced Filtering:</p> 
+        <p>Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset.</p> 
         
-        Binning Feature: 
-        Bin a certain amount of data within one datapoint to simplify the plot produced.  
+        <p>Binning Feature:</p>  
+        <p>Bin a certain amount of data within one datapoint to simplify the plot produced.</p>   
         
-        Peak Detection: 
-        Enable this feature to automatically detect and label prominent peaks in the spectra. 
+        <p>Peak Detection:</p>  
+        <p>Enable this feature to automatically detect and label prominent peaks in the spectra.</p>  
       
-        Background Gas Labels: 
-        Add functional group labels based on wavelengths for easier identification of background gases in your spectra.
+        <p>Background Gas Labels:</p>  
+        <p>Add functional group labels based on wavelengths for easier identification of background gases in your spectra.</p> 
         
-        Sonogram Plot:
-        View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.
+        <p>Sonogram Plot:</p> 
+        <p>View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</p> 
             
-        Getting Started:
-        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.
+        <p>Getting Started:</p> 
+        <p>To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
         </div>
     """, unsafe_allow_html=True)
 
