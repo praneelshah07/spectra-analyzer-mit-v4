@@ -63,9 +63,6 @@ st.markdown("""
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
-# Display the banner across the top
-st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
-
 # Move instructions to the sidebar
 st.sidebar.markdown("""
     <div class="description">
