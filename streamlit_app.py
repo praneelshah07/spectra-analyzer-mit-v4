@@ -53,8 +53,8 @@ st.markdown("""
     }
 
     .sidebar {
-        font-size: 20px;  /* Sidebar font size */
-        line-height: 1.3;  /* Improves readability */
+        font-size: 25px;  /* Sidebar font size */
+        line-height: 1.2;  /* Improves readability */
         font-weight: bold;
     }
 
@@ -77,8 +77,9 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool. Here is a breakdown of the app’s functionalities: </div>
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
         <div class="description">   
+        <p>Here is a breakdown of the app’s functionalities:</p>
         
         <p>SMARTS Filtering: 
         Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
