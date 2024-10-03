@@ -267,6 +267,22 @@ with col1:
         
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
+
+        # Display DataFrame with row selection enabled
+        event = st.data_editor(
+            data[columns_to_display],
+            selection_mode="multi",
+            hide_index=True,
+        )
+        
+        # Get selected rows
+        if event["selected_rows"]:
+            selected_rows = event["selected_rows"]
+            selected_data = data.iloc[selected_rows]
+            st.write("Selected Rows:")
+            st.dataframe(selected_data)
+        else:
+            st.write("No rows selected.")
    
         # Ensure filtered_smiles is always initialized outside the expander
         filtered_smiles = data['SMILES'].unique()  # Initialize with all available SMILES
