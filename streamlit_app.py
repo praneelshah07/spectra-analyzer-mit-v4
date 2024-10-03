@@ -81,25 +81,25 @@ st.sidebar.markdown("""
         <div class="description">   
         
         <p>SMARTS Filtering:</p> 
-        <p>Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
+        Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset. 
         
         <p>Advanced Filtering:</p> 
-        <p>Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset.</p> 
+        Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset. 
         
         <p>Binning Feature:</p>  
-        <p>Bin a certain amount of data within one datapoint to simplify the plot produced.</p>   
+        Bin a certain amount of data within one datapoint to simplify the plot produced.  
         
         <p>Peak Detection:</p>  
-        <p>Enable this feature to automatically detect and label prominent peaks in the spectra.</p>  
+        Enable this feature to automatically detect and label prominent peaks in the spectra.  
       
         <p>Background Gas Labels:</p>  
-        <p>Add functional group labels based on wavelengths for easier identification of background gases in your spectra.</p> 
+        Add functional group labels based on wavelengths for easier identification of background gases in your spectra. 
         
         <p>Sonogram Plot:</p> 
-        <p>View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</p> 
+        View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds. 
             
         <p>Getting Started:</p> 
-        <p>To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
+        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed. 
         </div>
     """, unsafe_allow_html=True)
 
