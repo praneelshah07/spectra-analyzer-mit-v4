@@ -82,7 +82,7 @@ st.sidebar.markdown("""
         <div class="description">   
         <p>Here is a breakdown of the app’s functionalities:</p>
         
-        <p>**SMARTS Filtering:** 
+        <p><b>SMARTS Filtering:</b> 
         Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
         
         <p>Advanced Filtering: 
