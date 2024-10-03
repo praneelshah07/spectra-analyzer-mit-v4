@@ -83,7 +83,7 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool.
             
         Here’s a breakdown of the app’s functionalities:
         
