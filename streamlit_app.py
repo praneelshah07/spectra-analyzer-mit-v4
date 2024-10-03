@@ -267,9 +267,6 @@ with col1:
         
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
-
-    # Step 1: Select molecule by SMILES
-    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
    
     # UI Rearrangement with expander
     with st.expander("Advanced Filtration Metrics"):
@@ -296,6 +293,9 @@ with col1:
             if bond_input:
                 filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
                 st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
+
+        # Step 1: Select molecule by SMILES
+        selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
     
         # Step 4: Bin size input (only for wavelength)
         bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
