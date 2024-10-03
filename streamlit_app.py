@@ -265,11 +265,21 @@ with col1:
         data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
         data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
         
+        # Display the DataFrame with relevant columns
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
-        st.write(data[columns_to_display])
-   
-        # Ensure filtered_smiles is always initialized outside the expander
-        filtered_smiles = data['SMILES'].unique()  # Initialize with all available SMILES
+        st.write("Molecule Data:")
+        st.dataframe(data[columns_to_display])
+        
+        # Add multiselect for selecting rows based on a unique column (SMILES or Formula)
+        selected_rows = st.multiselect('Select rows by SMILES:', options=data['SMILES'].unique())
+        
+        # Filter the DataFrame based on the selected rows
+        if selected_rows:
+            selected_data = data[data['SMILES'].isin(selected_rows)]
+            st.write(f"Showing selected rows based on SMILES: {selected_rows}")
+            st.dataframe(selected_data[columns_to_display])  # Show the selected rows
+        else:
+            st.write("No rows selected yet.")
         
         # UI Rearrangement with expander for advanced features
         with st.expander("Advanced Filtration Metrics"):
