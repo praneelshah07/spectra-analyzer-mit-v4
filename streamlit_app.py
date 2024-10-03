@@ -56,6 +56,7 @@ st.markdown("""
         font-size: 25px;  /* Sidebar font size */
         line-height: 1.2;  /* Improves readability */
         font-weight: bold;
+        text-align: center;
     }
 
     .description {
@@ -81,7 +82,7 @@ st.sidebar.markdown("""
         <div class="description">   
         <p>Here is a breakdown of the app’s functionalities:</p>
         
-        <p>SMARTS Filtering: 
+        <p>**SMARTS Filtering:** 
         Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
         
         <p>Advanced Filtering: 
