@@ -268,16 +268,19 @@ with col1:
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
 
+    # Step 1: Select molecule by SMILES
+    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
+   
     # UI Rearrangement with expander
     with st.expander("Advanced Filtration Metrics"):
-        # Step 1: Filter Selection
+        # Step 2: Filter Selection
         use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
         use_advanced_filter = st.checkbox('Apply Advanced Filtering')
     
         # Ensure filtered_smiles is always initialized
         filtered_smiles = data['SMILES'].unique()
     
-        # Step 2: Apply SMARTS filtering if enabled
+        # Step 3: Apply SMARTS filtering if enabled
         if use_smarts_filter:
             functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
             if functional_group_smarts:
@@ -287,15 +290,12 @@ with col1:
                 except Exception as e:
                     st.error(f"Invalid SMARTS pattern: {e}")
     
-        # Step 2 (Advanced): Apply advanced filtering if selected
+        # Step 3 (Advanced): Apply advanced filtering if selected
         if use_advanced_filter:
             bond_input = st.text_input("Enter a bond type (e.g., C-C, C#C, C-H):", "")
             if bond_input:
                 filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
                 st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
-    
-        # Step 3: Select molecule by SMILES
-        selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
     
         # Step 4: Bin size input (only for wavelength)
         bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
