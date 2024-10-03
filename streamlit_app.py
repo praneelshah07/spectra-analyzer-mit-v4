@@ -53,7 +53,7 @@ st.markdown("""
     }
 
     .sidebar .description {
-        font-size: 12px;  /* Sidebar font size */
+        font-size: 4px;  /* Sidebar font size */
         line-height: 1.6;  /* Improves readability */
         color: #333333;
         background-color: #f9f9f9;
