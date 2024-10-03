@@ -31,13 +31,6 @@ st.markdown("""
         font-weight: bold;
         margin-bottom: 20px;
     }
-    .description {
-        font-size: 16px;  /* Reduced font size slightly for better fit */
-        color: #333333;
-        margin-bottom: 15px;
-        line-height: 1.5;
-        text-align: left;
-    }
     .input-controls-header {
         padding: 10px;
         margin-bottom: 20px;
@@ -59,9 +52,8 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* Styling for sidebar text */
     .sidebar .description {
-        font-size: 16px;  /* Sidebar font size */
+        font-size: 12px;  /* Sidebar font size */
         line-height: 1.6;  /* Improves readability */
         color: #333333;
         background-color: #f9f9f9;
