@@ -64,7 +64,7 @@ st.markdown("""
         line-height: 1.4;  /* Improves readability */
         color: #333333;
         background-color: #f0f8ff;
-        padding: 10px;
+        padding: 20px;
         border-radius: 10px;
         border: 1px solid #ddd;  /* Subtle border */
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
