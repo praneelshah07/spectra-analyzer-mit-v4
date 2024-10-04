@@ -181,32 +181,63 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
 def advanced_filtering_by_bond(smiles_list, bond_pattern):
     filtered_smiles = []
     
+    # Mapping common user bond patterns to valid SMARTS
+    bond_smarts_dict = {
+        "C-H": "[#6][#1]",  # Carbon-hydrogen bond
+        "C=C": "[#6]=[#6]",  # Carbon-carbon double bond
+        "C#C": "[#6]#[#6]",  # Carbon-carbon triple bond
+        "O-H": "[#8][#1]",  # Hydroxyl group
+        "N-H": "[#7][#1]",  # Nitrogen-hydrogen bond (amine, etc.)
+        "C=O": "[#6]=[#8]",  # Carbonyl group (ketones, aldehydes, etc.)
+        "C-O": "[#6][#8]",  # Carbon-oxygen single bond (alcohol, ether)
+        "C#N": "[#6]#[#7]",  # Nitrile group
+        "N=O": "[#7]=[#8]",  # Nitro group
+        "C=S": "[#6]=[#16]",  # Thiocarbonyl group
+        "S-H": "[#16][#1]",  # Thiol group
+        "C-N": "[#6][#7]",  # Carbon-nitrogen single bond (amine)
+        "C=N": "[#6]=[#7]",  # Imines
+        "C-OH": "[#6][OH]",  # Alcohol hydroxyl group
+        "C=O": "[#6]=[#8]",  # Carbonyl group (ketone, aldehyde, ester, amide)
+        "C-O-C": "[#6][#8][#6]",  # Ether group
+        "C-OH": "[#6][OH]",  # Hydroxyl group (alcohols, phenols)
+        "N=C=O": "[#7]=[#6]=[#8]",  # Isocyanate group
+        "C-NH2": "[#6][NH2]",  # Primary amine
+        "C-C": "[#6][#6]",  # Carbon-carbon single bond (alkane)
+        "C-Cl": "[#6][#17]",  # Alkyl chloride
+        "C-Br": "[#6][#35]",  # Alkyl bromide
+        "C-I": "[#6][#53]",  # Alkyl iodide
+        "P=O": "[#15]=[#8]",  # Phosphate group
+        "S=O": "[#16]=[#8]",  # Sulfoxide group
+        "S=O2": "[#16](=[#8])=[#8]",  # Sulfone group
+        "N#C": "[#7]#[#6]",  # Isonitrile group
+    }
+    
     # Ensure the bond pattern is recognized and valid
-    if bond_pattern == "C-H":
-        bond_smarts = "[C][H]"  # SMARTS for C-H bond
+    if bond_pattern in bond_smarts_dict:
+        bond_smarts = bond_smarts_dict[bond_pattern]
     else:
         try:
-            bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
+            bond_smarts = bond_pattern  # Use the input directly for other bond patterns
             if not Chem.MolFromSmarts(bond_smarts):
                 raise ValueError(f"Invalid SMARTS pattern: {bond_smarts}")
         except Exception as e:
             st.error(f"Error with SMARTS pattern: {e}")
             return filtered_smiles  # Return an empty list in case of error
     
+    # Filter molecules based on the SMARTS pattern
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
-        
         if mol:
-            mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens
+            mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens if needed
             
-            if mol_with_h and Chem.MolFromSmarts(bond_smarts):
-                # Now check for substructure matches
-                if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
-                    filtered_smiles.append(smiles)
+            # Check for substructure matches
+            if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
+                filtered_smiles.append(smiles)
         else:
             st.warning(f"Could not process SMILES: {smiles}")
     
     return filtered_smiles
+
 
 # Compute the distance matrix
 def compute_serial_matrix(dist_mat, method="ward"):
