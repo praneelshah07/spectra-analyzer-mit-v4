@@ -343,11 +343,17 @@ with col1:
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
-# Ensure the spectra and x_axis only contain finite values
-def remove_invalid_values(spectra, x_axis):
-    # Create a mask for valid (finite) values in both x_axis and spectra
-    mask = np.isfinite(spectra) & np.isfinite(x_axis)
-    return spectra[mask], x_axis[mask]
+    # Ensure the spectra and x_axis only contain finite values
+    def remove_invalid_values(spectra, x_axis):
+        # Ensure both spectra and x_axis are NumPy arrays
+        spectra = np.array(spectra)
+        x_axis = np.array(x_axis)
+    
+        # Create a mask for valid (finite) values in both x_axis and spectra
+        mask = np.isfinite(spectra) & np.isfinite(x_axis)
+        
+        # Return only the finite values
+        return spectra[mask], x_axis[mask]
 
 with main_col2:
     st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
