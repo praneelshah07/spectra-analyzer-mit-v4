@@ -163,7 +163,6 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         max_peak = np.max(binned_spectra)
 
     normalized_spectra = binned_spectra / max_peak
-    st.write(x_axis)
     return normalized_spectra, x_axis[:-1]
 
 # Function to filter molecules by functional group using SMARTS
@@ -393,9 +392,6 @@ with main_col2:
                
                 for i,smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
-                    st.write(x_axis)
-                    st.write(len(x_axis))
-                    st.write(len(spectra))
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
