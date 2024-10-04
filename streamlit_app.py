@@ -144,7 +144,7 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
-    if bin_type == 'wavelength':
+    if 'wavelength' in bin_type:
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
         x_axis = bins
@@ -391,14 +391,6 @@ with main_col2:
                             x_axis = wavelength
                             ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
                
-                st.write(bin_type)
-                if bin_type.lower() == 'wavelength':
-                    bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
-                    digitized = np.digitize(wavelength, bins)
-                    st.write(bins)
-                    st.write(wavelength.min(), wavelength.max(), bin_size)
-                    x_axis = bins
-        
                 for i,smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     st.write(x_axis)
