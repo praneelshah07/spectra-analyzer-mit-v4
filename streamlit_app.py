@@ -428,10 +428,14 @@ with main_col2:
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
-                        # Detect peaks and retrieve peak properties like prominence
+                        # Initialize top_peaks as an empty list by default
                         top_peaks = []
+                    
+                        # Detect peaks and retrieve peak properties like prominence
                         peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
-                        
+                    
+                        st.write(f"Peaks detected: {len(peaks)}")
+                    
                         # Sort the peaks by their prominence and select the top `num_peaks`
                         if len(peaks) > 0:
                             prominences = properties['prominences']
@@ -440,14 +444,21 @@ with main_col2:
                             
                             # Extract the top `num_peaks` most prominent peaks
                             top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
+                            st.write(f"Top peaks extracted: {top_peaks}")
+                        else:
+                            st.warning("No peaks detected for the current spectra.")
                     
-                        # Now label the top peaks
-                        for peak in top_peaks:
-                            peak_wavelength = x_axis[peak]
-                            peak_intensity = spectra[peak]
-                            # Label the peaks with wavelength
-                            ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                    fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                        # Only loop through top_peaks if it contains elements
+                        if top_peaks:
+                            for peak in top_peaks:
+                                peak_wavelength = x_axis[peak]
+                                peak_intensity = spectra[peak]
+                                st.write(f"Plotting peak at wavelength: {peak_wavelength}")
+                                # Label the peaks with wavelength
+                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                        else:
+                            st.warning(f"No prominent peaks detected for this spectra: {smiles}")
 
                 # Now label the top peaks
                 for peak in top_peaks:
