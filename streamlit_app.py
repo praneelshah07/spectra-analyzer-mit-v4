@@ -388,8 +388,7 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                            ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
-                            alpha=0.5, label=f"{smiles}")
+                            ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
                 for smiles in target_spectra:
                     spectra = target_spectra[smiles]
@@ -408,13 +407,13 @@ with main_col2:
                             # Extract the top `num_peaks` most prominent peaks
                             top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                            # Now label the top peaks
-                            for peak in top_peaks:
-                                peak_wavelength = x_axis[peak]
-                                peak_intensity = spectra[peak]
-                                # Label the peaks with wavelength
-                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                # Now label the top peaks
+                for peak in top_peaks:
+                    peak_wavelength = x_axis[peak]
+                    peak_intensity = spectra[peak]
+                     # Label the peaks with wavelength
+                    ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                            fontsize=10, ha='center', color='black')
 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
