@@ -79,9 +79,11 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
-        
         <div class="description">   
         <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
+
+        <p><b>Getting Started:</b>
+        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
         
         <p><b>SMARTS Filtering:</b> 
         Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
@@ -100,9 +102,6 @@ st.sidebar.markdown("""
         
         <p><b>Sonogram Plot:</b> 
         View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</p> 
-            
-        <p><b>Getting Started:</b>
-        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
         </div>
     """, unsafe_allow_html=True)
 
