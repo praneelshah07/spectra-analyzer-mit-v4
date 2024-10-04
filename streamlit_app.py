@@ -335,6 +335,9 @@ with col1:
     # The molecule selection (outside the expander)
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
+    # Add dropdown for color selection
+    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
@@ -369,8 +372,16 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
-                random.shuffle(color_options)
+                color_map = {
+                    'Red': 'r',
+                    'Green': 'g',
+                    'Blue': 'b',
+                    'Cyan': 'c',
+                    'Magenta': 'm',
+                    'Yellow': 'y',
+                    'Black': 'k'
+                }
+                selected_color = color_map[color_selection]
 
                 target_spectra = {}
                 for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
@@ -392,8 +403,7 @@ with main_col2:
 
                 for smiles in target_spectra:
                     spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
-                    alpha=0.5, label=f"{smiles}")
+                    ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
