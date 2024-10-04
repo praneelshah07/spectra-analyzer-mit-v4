@@ -102,12 +102,7 @@ st.sidebar.markdown("""
             
         <p><b>Getting Started:</b>
         To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
-
-        <p><b>Further Information About SMARTS:</b>
-        https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
-        https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html</p>
         </div>
-        
     """, unsafe_allow_html=True)
 
 
@@ -395,7 +390,7 @@ with main_col2:
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
-                for i, smiles in enumerate(target_spectra):
+                for smiles in target_spectra:
                     spectra = target_spectra[smiles]
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
                     alpha=0.5, label=f"{smiles}")
