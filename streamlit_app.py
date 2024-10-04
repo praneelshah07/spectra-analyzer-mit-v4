@@ -385,31 +385,25 @@ with main_col2:
                     'Yellow': 'y',
                     'Black': 'k'
                 }
-                
-                # Use selected colors in the plot
-                for i, (smiles, color) in enumerate(zip(selected_smiles, selected_colors)):
-                    selected_color = color_map[color]  # Get the color from the selected_colors list
 
                 target_spectra = {}
-                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
-                    if smiles in selected_smiles:
-                        # Apply binning if selected
-                        if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
-                        else:
-                            spectra = spectra / np.max(spectra)  # Normalize if no binning
-                            x_axis = wavelength
-                        target_spectra[smiles] = spectra
+                # Ensure each molecule is plotted with the correct color
+                for i, smiles in enumerate(selected_smiles):
+                    selected_color = color_map[selected_colors[i]]  # Get the color from the selected_colors list
+                    
+                    spectra = data[data['SMILES'] == smiles]['Raw_Spectra_Intensity'].values[0]
+                    
+                    # Apply binning if selected
+                    if bin_type != 'None':
+                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
                     else:
-                        if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
-                        else:
-                            spectra = spectra / np.max(spectra)  # Normalize if no binning
-                            x_axis = wavelength
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
-
-                for smiles in target_spectra:
-                    spectra = target_spectra[smiles]
+                        spectra = spectra / np.max(spectra)  # Normalize if no binning
+                        x_axis = wavelength
+                    
+                    # Store spectra for later use in target_spectra dictionary
+                    target_spectra[smiles] = spectra
+                    
+                    # Plot each molecule's spectra
                     ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
@@ -419,10 +413,7 @@ with main_col2:
                         # Sort the peaks by their prominence and select the top `num_peaks`
                         if len(peaks) > 0:
                             prominences = properties['prominences']
-                            # Zip peaks with their corresponding prominences, then sort by prominence
                             peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
-                            
-                            # Extract the top `num_peaks` most prominent peaks
                             top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
                             # Now label the top peaks
