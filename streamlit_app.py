@@ -390,7 +390,12 @@ with main_col2:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                             ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
-
+    
+                if bin_type.lower() == 'wavelength':
+                    bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
+                    digitized = np.digitize(wavelength, bins)
+                    x_axis = bins
+        
                 for i,smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     st.write(x_axis)
