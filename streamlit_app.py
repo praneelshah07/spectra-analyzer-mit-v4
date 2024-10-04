@@ -393,6 +393,8 @@ with main_col2:
 
                 for i,smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
+                    st.write(len(x_axis))
+                    st.write(len(spectra))
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
