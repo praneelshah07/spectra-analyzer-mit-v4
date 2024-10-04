@@ -376,13 +376,14 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-               color_map = {
+                color_map = {
                     'Red': 'r',
                     'Green': 'g',
                     'Blue': 'b',
                     'Cyan': 'c',
                     'Magenta': 'm',
                     'Yellow': 'y',
+                    'Black': 'k'
                 }
                 
                 # Use selected colors in the plot
