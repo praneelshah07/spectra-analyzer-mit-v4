@@ -335,9 +335,6 @@ with col1:
     # The molecule selection (outside the expander)
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
-    # Add dropdown for color selection
-    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
-
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
@@ -372,16 +369,8 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_map = {
-                    'Red': 'r',
-                    'Green': 'g',
-                    'Blue': 'b',
-                    'Cyan': 'c',
-                    'Magenta': 'm',
-                    'Yellow': 'y',
-                    'Black': 'k'
-                }
-                selected_color = color_map[color_selection]
+                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
+                random.shuffle(color_options)
 
                 target_spectra = {}
                 for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
@@ -399,7 +388,8 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                            ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+                            ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
+                            alpha=0.5, label=f"{smiles}")
 
                 for smiles in target_spectra:
                     spectra = target_spectra[smiles]
@@ -424,7 +414,7 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                 # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=selected_color)
+                                        fontsize=10, ha='center', color=color_options)
 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
