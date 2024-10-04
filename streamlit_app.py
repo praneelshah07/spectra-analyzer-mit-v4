@@ -184,7 +184,7 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
         bond_smarts = "[C][H]"  # SMARTS for C-H bond
 
     elif bond_pattern == "C=C":
-    bond_smarts = "[C]=[C]"  # SMARTS for a carbon-carbon double bond
+        bond_smarts = "[C]=[C]"  # SMARTS for a carbon-carbon double bond
 
     elif bond_pattern == "C#C":
         bond_smarts = "[C]#[C]"  # SMARTS for a carbon-carbon triple bond
