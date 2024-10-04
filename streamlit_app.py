@@ -399,7 +399,7 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+                            ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
                 for smiles in target_spectra:
                     spectra = target_spectra[smiles]
@@ -431,7 +431,7 @@ with main_col2:
                     fg_wavelength = fg['Wavelength']
                     fg_label = fg['Functional Group']
                     ax.axvline(fg_wavelength, color='grey', linestyle='--')
-                    ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
+                    ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='right')
 
                 # Customize plot
                 ax.set_xlim([x_axis.min(), x_axis.max()])
