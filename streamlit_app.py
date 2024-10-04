@@ -394,6 +394,7 @@ with main_col2:
                 if bin_type.lower() == 'wavelength':
                     bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
                     digitized = np.digitize(wavelength, bins)
+                    st.write(bins)
                     x_axis = bins
         
                 for i,smiles in enumerate(target_spectra):
