@@ -105,7 +105,6 @@ st.sidebar.markdown("""
         </div>
     """, unsafe_allow_html=True)
 
-
 # Initialize session state for functional groups
 if 'functional_groups' not in st.session_state:
     st.session_state['functional_groups'] = []
