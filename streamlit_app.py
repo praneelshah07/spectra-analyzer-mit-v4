@@ -337,11 +337,11 @@ with col1:
 
     # Add a color selection dropdown for each selected molecule
     selected_colors = []
-    if selected_smiles:
+       if selected_smiles:
         for i, smile in enumerate(selected_smiles):
-            color_selection = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
-            color_selection.append(color_selection)
-
+            color = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+            selected_colors.append(color)  # Append the selected color to the list
+            
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
