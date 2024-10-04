@@ -339,7 +339,7 @@ with col1:
     selected_colors = []
     if selected_smiles:
         for i, smile in enumerate(selected_smiles):
-            color = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+            color = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow'])
             selected_colors.append(color)  # Append the selected color to the list
             
     # Step 8: Confirm button
@@ -376,16 +376,18 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_map = {
+               color_map = {
                     'Red': 'r',
                     'Green': 'g',
                     'Blue': 'b',
                     'Cyan': 'c',
                     'Magenta': 'm',
                     'Yellow': 'y',
-                    'Black': 'k'
                 }
-                selected_color = color_map[color_selection]
+                
+                # Use selected colors in the plot
+                for i, (smiles, color) in enumerate(zip(selected_smiles, selected_colors)):
+                    selected_color = color_map[color]  # Get the color from the selected_colors list
 
                 target_spectra = {}
                 for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
