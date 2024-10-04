@@ -51,7 +51,7 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
     }
-
+    
     .sidebar {
         font-size: 25px;  /* Sidebar font size */
         line-height: 1.2;  /* Improves readability */
