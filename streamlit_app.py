@@ -182,6 +182,28 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
     # Ensure the bond pattern is recognized and valid
     if bond_pattern == "C-H":
         bond_smarts = "[C][H]"  # SMARTS for C-H bond
+
+    elif bond_pattern == "C=C":
+    bond_smarts = "[C]=[C]"  # SMARTS for a carbon-carbon double bond
+
+    elif bond_pattern == "C#C":
+        bond_smarts = "[C]#[C]"  # SMARTS for a carbon-carbon triple bond
+    
+    elif bond_pattern == "O-H":
+        bond_smarts = "[O][H]"  # SMARTS for a hydroxyl group (O-H)
+    
+    elif bond_pattern == "N-H":
+        bond_smarts = "[N][H]"  # SMARTS for a nitrogen-hydrogen bond (amine)
+    
+    elif bond_pattern == "C=O":
+        bond_smarts = "[C]=[O]"  # SMARTS for a carbonyl group (C=O)
+    
+    elif bond_pattern == "C-O":
+        bond_smarts = "[C][O]"  # SMARTS for a carbon-oxygen single bond (ether, alcohol)
+    
+    elif bond_pattern == "C#N":
+        bond_smarts = "[C]#[N]"  # SMARTS for a nitrile group (C≡N)
+
     else:
         try:
             bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
