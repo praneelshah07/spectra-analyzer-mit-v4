@@ -387,7 +387,19 @@ with main_col2:
                 }
 
                 target_spectra = {}
-                # Ensure each molecule is plotted with the correct color
+
+                # Plot all non-selected molecules first (shaded in the background)
+                for smiles, spectra in data[~data['SMILES'].isin(selected_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
+                    spectra = spectra / np.max(spectra)  # Normalize spectra
+                    x_axis = wavelength  # Use wavelength for x-axis
+
+                    # Apply binning if selected
+                    if bin_type != 'None':
+                        spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+
+                    ax.fill_between(x_axis, 0, spectra, color="grey", alpha=0.05)  # Light grey shading for background
+
+                # Now plot the selected molecules with their respective colors
                 for i, smiles in enumerate(selected_smiles):
                     selected_color = color_map[selected_colors[i]]  # Get the color from the selected_colors list
                     
