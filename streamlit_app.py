@@ -390,9 +390,10 @@ with main_col2:
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
-                for smiles in target_spectra:
+                for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
+                    ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
+                    alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
