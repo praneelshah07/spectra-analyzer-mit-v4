@@ -393,7 +393,7 @@ with main_col2:
 
                 for smiles in target_spectra:
                     spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
+                    ax.fill_between(x_axis, 0, spectra, color=color_options, alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
