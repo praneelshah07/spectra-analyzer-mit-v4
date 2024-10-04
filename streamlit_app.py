@@ -343,11 +343,20 @@ with col1:
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
-    # Ensure the spectra and x_axis only contain finite values
+    # Ensure the spectra and x_axis only contain finite values, with added debugging
     def remove_invalid_values(spectra, x_axis):
         # Ensure both spectra and x_axis are NumPy arrays
         spectra = np.array(spectra)
         x_axis = np.array(x_axis)
+    
+        # Debugging: Print the types of both arrays
+        print("Spectra type:", type(spectra))
+        print("x_axis type:", type(x_axis))
+    
+        # Check if spectra or x_axis have incompatible shapes
+        if spectra.shape != x_axis.shape:
+            print("Shape mismatch! Spectra shape:", spectra.shape, "x_axis shape:", x_axis.shape)
+            raise ValueError("Shape mismatch between spectra and x_axis!")
     
         # Create a mask for valid (finite) values in both x_axis and spectra
         mask = np.isfinite(spectra) & np.isfinite(x_axis)
