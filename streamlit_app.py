@@ -365,6 +365,7 @@ with main_col2:
                 else:
                     st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
             else:
+                top_peaks = []
                 fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
@@ -403,17 +404,15 @@ with main_col2:
                             prominences = properties['prominences']
                             # Zip peaks with their corresponding prominences, then sort by prominence
                             peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
-                            
                             # Extract the top `num_peaks` most prominent peaks
                             top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
-
-                # Now label the top peaks
-                for peak in top_peaks:
-                    peak_wavelength = x_axis[peak]
-                    peak_intensity = spectra[peak]
-                     # Label the peaks with wavelength
-                    ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                            fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                            # Now label the top peaks
+                            for peak in top_peaks:
+                                peak_wavelength = x_axis[peak]
+                                peak_intensity = spectra[peak]
+                                 # Label the peaks with wavelength
+                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
+                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
