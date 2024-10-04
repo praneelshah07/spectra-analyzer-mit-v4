@@ -102,12 +102,7 @@ st.sidebar.markdown("""
             
         <p><b>Getting Started:</b>
         To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
-
-        <p><b>Further Information About SMARTS:</b>
-        https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
-        https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html</p>
         </div>
-        
     """, unsafe_allow_html=True)
 
 
@@ -340,6 +335,9 @@ with col1:
     # The molecule selection (outside the expander)
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
 
+    # Add dropdown for color selection
+    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
 
@@ -374,8 +372,16 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
-                random.shuffle(color_options)
+                color_map = {
+                    'Red': 'r',
+                    'Green': 'g',
+                    'Blue': 'b',
+                    'Cyan': 'c',
+                    'Magenta': 'm',
+                    'Yellow': 'y',
+                    'Black': 'k'
+                }
+                selected_color = color_map[color_selection]
 
                 target_spectra = {}
                 for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
@@ -395,10 +401,9 @@ with main_col2:
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
-                for i, smiles in enumerate(target_spectra):
+                for smiles in target_spectra:
                     spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], 
-                    alpha=0.5, label=f"{smiles}")
+                    ax.fill_between(x_axis, 0, spectra, color=selected_color, alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
