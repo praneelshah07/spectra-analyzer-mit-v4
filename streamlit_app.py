@@ -102,7 +102,12 @@ st.sidebar.markdown("""
             
         <p><b>Getting Started:</b>
         To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
+
+        <p><b>Further Information About SMARTS:</b>
+        https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
+        https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html</p>
         </div>
+        
     """, unsafe_allow_html=True)
 
 
