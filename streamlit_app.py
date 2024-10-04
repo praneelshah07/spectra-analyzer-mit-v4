@@ -404,7 +404,8 @@ with main_col2:
                 random.shuffle(color_options)
 
                 target_spectra = {}
-                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
+                # Add an index using enumerate to fix the undefined 'i'
+                for i, (smiles, spectra) in enumerate(data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values):
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
@@ -419,9 +420,10 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                            ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
-
-                for smiles in target_spectra:
+                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+                
+                # Loop again for target_spectra with enumerate to correctly use 'i'
+                for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
 
