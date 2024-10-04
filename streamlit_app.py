@@ -393,19 +393,7 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                            # Check for invalid values and replace or mask them
-                            def clean_invalid_data(x_axis, spectra):
-                                # Remove NaN or inf values from spectra
-                                valid_mask = np.isfinite(spectra)
-                                cleaned_x_axis = x_axis[valid_mask]
-                                cleaned_spectra = spectra[valid_mask]
-                                return cleaned_x_axis, cleaned_spectra
-                            
-                                # In your plotting section, before calling fill_between:
-                                cleaned_x_axis, cleaned_spectra = clean_invalid_data(x_axis, spectra)
-                                
-                                # Now use the cleaned data for plotting
-                                ax.fill_between(cleaned_x_axis, 0, cleaned_spectra, color="k", alpha=0.01)
+                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
 
                 for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
