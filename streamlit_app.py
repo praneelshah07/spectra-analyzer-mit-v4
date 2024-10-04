@@ -429,6 +429,7 @@ with main_col2:
 
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
+                        top_peaks = []
                         peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
                         
                         # Sort the peaks by their prominence and select the top `num_peaks`
