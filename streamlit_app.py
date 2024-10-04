@@ -144,33 +144,6 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin and normalize spectra, with Q-branch handling
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None):
-    wavenumber = np.arange(4000, 500, -1)
-    wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
-
-    if bin_type == 'wavelength':
-        bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
-        digitized = np.digitize(wavelength, bins)
-        x_axis = bins
-    else:
-        return spectra, None  # No binning if the type is not recognized
-
-    # Perform binning by averaging spectra in each bin
-    binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
-
-    # Normalize the spectra after binning
-    if q_branch_threshold is not None:
-        # Ignore sharp Q-branch peaks by applying the threshold to the peak values
-        peaks, _ = find_peaks(binned_spectra, height=q_branch_threshold)
-        max_peak = np.max(np.delete(binned_spectra, peaks))  # Remove Q-branch peaks for normalization
-    else:
-        max_peak = np.max(binned_spectra)
-
-    normalized_spectra = binned_spectra / max_peak
-    
-    return normalized_spectra, x_axis[:-1]
-
 # Function to filter molecules by functional group using SMARTS
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
