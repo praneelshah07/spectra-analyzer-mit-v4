@@ -390,7 +390,8 @@ with main_col2:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                             ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
-    
+               
+                st.write(bin_type)
                 if bin_type.lower() == 'wavelength':
                     bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
                     digitized = np.digitize(wavelength, bins)
