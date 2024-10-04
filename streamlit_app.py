@@ -181,63 +181,32 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
 def advanced_filtering_by_bond(smiles_list, bond_pattern):
     filtered_smiles = []
     
-    # Mapping common user bond patterns to valid SMARTS
-    bond_smarts_dict = {
-        "C-H": "[#6][#1]",  # Carbon-hydrogen bond
-        "C=C": "[#6]=[#6]",  # Carbon-carbon double bond
-        "C#C": "[#6]#[#6]",  # Carbon-carbon triple bond
-        "O-H": "[#8][#1]",  # Hydroxyl group
-        "N-H": "[#7][#1]",  # Nitrogen-hydrogen bond (amine, etc.)
-        "C=O": "[#6]=[#8]",  # Carbonyl group (ketones, aldehydes, etc.)
-        "C-O": "[#6][#8]",  # Carbon-oxygen single bond (alcohol, ether)
-        "C#N": "[#6]#[#7]",  # Nitrile group
-        "N=O": "[#7]=[#8]",  # Nitro group
-        "C=S": "[#6]=[#16]",  # Thiocarbonyl group
-        "S-H": "[#16][#1]",  # Thiol group
-        "C-N": "[#6][#7]",  # Carbon-nitrogen single bond (amine)
-        "C=N": "[#6]=[#7]",  # Imines
-        "C-OH": "[#6][OH]",  # Alcohol hydroxyl group
-        "C=O": "[#6]=[#8]",  # Carbonyl group (ketone, aldehyde, ester, amide)
-        "C-O-C": "[#6][#8][#6]",  # Ether group
-        "C-OH": "[#6][OH]",  # Hydroxyl group (alcohols, phenols)
-        "N=C=O": "[#7]=[#6]=[#8]",  # Isocyanate group
-        "C-NH2": "[#6][NH2]",  # Primary amine
-        "C-C": "[#6][#6]",  # Carbon-carbon single bond (alkane)
-        "C-Cl": "[#6][#17]",  # Alkyl chloride
-        "C-Br": "[#6][#35]",  # Alkyl bromide
-        "C-I": "[#6][#53]",  # Alkyl iodide
-        "P=O": "[#15]=[#8]",  # Phosphate group
-        "S=O": "[#16]=[#8]",  # Sulfoxide group
-        "S=O2": "[#16](=[#8])=[#8]",  # Sulfone group
-        "N#C": "[#7]#[#6]",  # Isonitrile group
-    }
-    
     # Ensure the bond pattern is recognized and valid
-    if bond_pattern in bond_smarts_dict:
-        bond_smarts = bond_smarts_dict[bond_pattern]
+    if bond_pattern == "C-H":
+        bond_smarts = "[C][H]"  # SMARTS for C-H bond
     else:
         try:
-            bond_smarts = bond_pattern  # Use the input directly for other bond patterns
+            bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
             if not Chem.MolFromSmarts(bond_smarts):
                 raise ValueError(f"Invalid SMARTS pattern: {bond_smarts}")
         except Exception as e:
             st.error(f"Error with SMARTS pattern: {e}")
             return filtered_smiles  # Return an empty list in case of error
     
-    # Filter molecules based on the SMARTS pattern
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
+        
         if mol:
-            mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens if needed
+            mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens
             
-            # Check for substructure matches
-            if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
-                filtered_smiles.append(smiles)
+            if mol_with_h and Chem.MolFromSmarts(bond_smarts):
+                # Now check for substructure matches
+                if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
+                    filtered_smiles.append(smiles)
         else:
             st.warning(f"Could not process SMILES: {smiles}")
     
     return filtered_smiles
-
 
 # Compute the distance matrix
 def compute_serial_matrix(dist_mat, method="ward"):
@@ -404,8 +373,7 @@ with main_col2:
                 random.shuffle(color_options)
 
                 target_spectra = {}
-                # Add an index using enumerate to fix the undefined 'i'
-                for i, (smiles, spectra) in enumerate(data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values):
+                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
@@ -420,22 +388,16 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
-                
-                # Loop again for target_spectra with enumerate to correctly use 'i'
-                for i, smiles in enumerate(target_spectra):
+                            ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+
+                for smiles in target_spectra:
                     spectra = target_spectra[smiles]
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
 
                     if peak_finding_enabled:
-                        # Initialize top_peaks as an empty list by default
-                        top_peaks = []
-                    
                         # Detect peaks and retrieve peak properties like prominence
                         peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
-                    
-                        st.write(f"Peaks detected: {len(peaks)}")
-                    
+                        
                         # Sort the peaks by their prominence and select the top `num_peaks`
                         if len(peaks) > 0:
                             prominences = properties['prominences']
@@ -444,21 +406,6 @@ with main_col2:
                             
                             # Extract the top `num_peaks` most prominent peaks
                             top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
-                            st.write(f"Top peaks extracted: {top_peaks}")
-                        else:
-                            st.warning("No peaks detected for the current spectra.")
-                    
-                        # Only loop through top_peaks if it contains elements
-                        if top_peaks:
-                            for peak in top_peaks:
-                                peak_wavelength = x_axis[peak]
-                                peak_intensity = spectra[peak]
-                                st.write(f"Plotting peak at wavelength: {peak_wavelength}")
-                                # Label the peaks with wavelength
-                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
-                        else:
-                            st.warning(f"No prominent peaks detected for this spectra: {smiles}")
 
                 # Now label the top peaks
                 for peak in top_peaks:
