@@ -388,8 +388,8 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                            st.write("here!")
-                            ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+                        st.write("here!")
+                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
                
                 for i,smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
