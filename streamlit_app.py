@@ -234,9 +234,6 @@ with col1:
     # File uploader for custom datasets
     uploaded_file = st.file_uploader("If you would like to enter another dataset, insert it here", type=["csv", "zip"])
 
-    # Add dropdown for color selection
-    color_selection = st.selectbox('Select Color for Graphs:', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
-
     # Load new dataset if uploaded
     if uploaded_file is not None:
         if uploaded_file.name.endswith('.zip'):
@@ -337,6 +334,13 @@ with col1:
         
     # The molecule selection (outside the expander)
     selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
+
+    # Add a color selection dropdown for each selected molecule
+    selected_colors = []
+    if selected_smiles:
+        for i, smile in enumerate(selected_smiles):
+            color_selection = st.selectbox(f'Select Color for Molecule {i+1} ({smile}):', ['Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Black'])
+            color_selection.append(color_selection)
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
