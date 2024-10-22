@@ -169,7 +169,7 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
             # Apply suppression factor to reduce the intensity of the Q-branch peak
             normalized_spectra[left_idx:right_idx] *= q_branch_suppress_factor
 
-        # Normalize the spectra to a max value of 1
+        # Normalize the spectra to a max value of 1, excluding suppressed Q-branch areas
         max_non_q_peak = np.max(normalized_spectra)
         if max_non_q_peak > 0:
             normalized_spectra /= max_non_q_peak
