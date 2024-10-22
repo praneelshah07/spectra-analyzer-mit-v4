@@ -155,8 +155,11 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
+        # Calculate a dynamic threshold for peak detection based on standard deviation
+        dynamic_threshold = np.mean(binned_spectra) + 1.5 * np.std(binned_spectra)
+
         # Detect peaks to identify potential Q-branches
-        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.1)
+        peaks, properties = find_peaks(binned_spectra, height=dynamic_threshold, prominence=0.1)
         widths = peak_widths(binned_spectra, peaks, rel_height=0.5)[0]
 
         # Create a mask for Q-branch peaks based on their prominence and width
