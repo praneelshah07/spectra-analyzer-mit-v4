@@ -156,8 +156,12 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Normalize the spectra after binning
     if q_branch_threshold is not None:
         # Ignore sharp Q-branch peaks by applying the threshold to the peak values
-        peaks, _ = find_peaks(binned_spectra, height=q_branch_threshold)
-        max_peak = np.max(np.delete(binned_spectra, peaks))  # Remove Q-branch peaks for normalization
+        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold)
+        q_branch_mask = np.ones_like(binned_spectra, dtype=bool)
+        q_branch_mask[peaks] = False
+        
+        # Calculate normalization factor excluding Q-branch peaks
+        max_peak = np.max(binned_spectra[q_branch_mask])
     else:
         max_peak = np.max(binned_spectra)
 
