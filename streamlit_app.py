@@ -139,7 +139,7 @@ def load_data_from_zip(zip_url):
         return None
 
 # Function to bin and normalize spectra, with enhanced Q-branch handling
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None):
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, q_branch_max_intensity=0.3):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -166,11 +166,8 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
             right_idx = min(len(binned_spectra), int(peak + width // 2))
             q_branch_mask[left_idx:right_idx] = True
 
-        # Separate Q-branch and non-Q-branch regions
+        # Normalize non-Q-branch region to 1
         non_q_branch_spectra = binned_spectra[~q_branch_mask]
-        q_branch_spectra = binned_spectra[q_branch_mask]
-
-        # Normalize non-Q-branch region
         if len(non_q_branch_spectra) > 0:
             max_non_q_peak = np.max(non_q_branch_spectra)
             if max_non_q_peak > 0:
@@ -180,12 +177,15 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         else:
             normalized_spectra = binned_spectra  # In case no non-Q-branch regions are found
 
-        # Scale Q-branch region separately to prevent skewing
-        if len(q_branch_spectra) > 0:
+        # Scale Q-branch region separately to a max intensity defined by `q_branch_max_intensity`
+        if len(binned_spectra[q_branch_mask]) > 0:
+            q_branch_spectra = binned_spectra[q_branch_mask]
             max_q_peak = np.max(q_branch_spectra)
             if max_q_peak > 0:
-                normalized_spectra[q_branch_mask] = q_branch_spectra / max_q_peak
+                q_branch_scaled = (q_branch_spectra / max_q_peak) * q_branch_max_intensity
+                normalized_spectra[q_branch_mask] = q_branch_scaled
     else:
+        # Standard normalization if Q-branch handling is not specified
         max_peak = np.max(binned_spectra)
         if max_peak > 0:
             normalized_spectra = binned_spectra / max_peak
