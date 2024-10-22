@@ -139,7 +139,7 @@ def load_data_from_zip(zip_url):
         return None
 
 # Function to bin and normalize spectra, with enhanced Q-branch handling
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, q_branch_max_intensity=0.3):
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, q_branch_suppress_factor=0.3):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -159,31 +159,20 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.1)
         widths = peak_widths(binned_spectra, peaks, rel_height=0.5)[0]
 
-        # Create masks for Q-branch and non-Q-branch regions
-        q_branch_mask = np.zeros_like(binned_spectra, dtype=bool)
+        # Create a copy of the binned spectra for modification
+        normalized_spectra = binned_spectra.copy()
+
+        # Suppress Q-branch peaks by scaling down their intensity
         for peak, width in zip(peaks, widths):
             left_idx = max(0, int(peak - width // 2))
             right_idx = min(len(binned_spectra), int(peak + width // 2))
-            q_branch_mask[left_idx:right_idx] = True
+            # Apply suppression factor to reduce the intensity of the Q-branch peak
+            normalized_spectra[left_idx:right_idx] *= q_branch_suppress_factor
 
-        # Normalize non-Q-branch region to 1
-        non_q_branch_spectra = binned_spectra[~q_branch_mask]
-        if len(non_q_branch_spectra) > 0:
-            max_non_q_peak = np.max(non_q_branch_spectra)
-            if max_non_q_peak > 0:
-                normalized_spectra = binned_spectra / max_non_q_peak
-            else:
-                normalized_spectra = binned_spectra
-        else:
-            normalized_spectra = binned_spectra  # In case no non-Q-branch regions are found
-
-        # Scale Q-branch region separately to a max intensity defined by `q_branch_max_intensity`
-        if len(binned_spectra[q_branch_mask]) > 0:
-            q_branch_spectra = binned_spectra[q_branch_mask]
-            max_q_peak = np.max(q_branch_spectra)
-            if max_q_peak > 0:
-                q_branch_scaled = (q_branch_spectra / max_q_peak) * q_branch_max_intensity
-                normalized_spectra[q_branch_mask] = q_branch_scaled
+        # Normalize the spectra to a max value of 1
+        max_non_q_peak = np.max(normalized_spectra)
+        if max_non_q_peak > 0:
+            normalized_spectra /= max_non_q_peak
     else:
         # Standard normalization if Q-branch handling is not specified
         max_peak = np.max(binned_spectra)
