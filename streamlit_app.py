@@ -8,7 +8,7 @@ import json
 import random
 import zipfile
 import io
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, peak_widths
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, leaves_list
 import requests
@@ -156,9 +156,15 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
         # Detect peaks to identify potential Q-branches
-        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold)
+        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.1)
+        widths = peak_widths(binned_spectra, peaks, rel_height=0.5)[0]
+
+        # Create a mask for Q-branch peaks based on their prominence and width
         q_branch_mask = np.ones_like(binned_spectra, dtype=bool)
-        q_branch_mask[peaks] = False
+        for peak, width in zip(peaks, widths):
+            left_idx = max(0, int(peak - width // 2))
+            right_idx = min(len(binned_spectra), int(peak + width // 2))
+            q_branch_mask[left_idx:right_idx] = False
 
         # Separate Q-branch region and non-Q-branch region
         non_q_branch_spectra = binned_spectra[q_branch_mask]
