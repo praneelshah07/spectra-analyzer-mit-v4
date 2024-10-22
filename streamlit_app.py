@@ -161,10 +161,11 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         # Create a copy of the binned spectra for modification
         normalized_spectra = binned_spectra.copy()
 
-        # Cap the intensity of very large Q-branch peaks
+        # Cap the intensity of very large Q-branch peaks without affecting other peaks
         for peak in peaks:
             if normalized_spectra[peak] > max_peak_limit:
-                normalized_spectra[peak] = max_peak_limit
+                scaling_factor = max_peak_limit / normalized_spectra[peak]
+                normalized_spectra *= scaling_factor
 
         # Normalize the spectra to a max value of 1
         max_value = np.max(normalized_spectra)
