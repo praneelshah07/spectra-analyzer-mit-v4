@@ -138,8 +138,8 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin and normalize spectra, with alternative Q-branch handling
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None):
+# Function to bin and normalize spectra, with enhanced Q-branch normalization
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=0.7):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -153,7 +153,7 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
 
-    # Alternative Q-branch handling
+    # Enhanced Q-branch handling
     if q_branch_threshold is not None:
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
@@ -161,18 +161,15 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         # Create a copy of the binned spectra for modification
         normalized_spectra = binned_spectra.copy()
 
-        # Reduce the intensity of the large Q-branch peak to avoid suppressing other peaks
+        # Cap the intensity of very large Q-branch peaks
         for peak in peaks:
-            # Limit the peak value to the median of the spectrum to normalize large Q-branch peaks
-            peak_value = normalized_spectra[peak]
-            median_value = np.median(binned_spectra)
-            if peak_value > median_value:
-                normalized_spectra[peak] = median_value
+            if normalized_spectra[peak] > max_peak_limit:
+                normalized_spectra[peak] = max_peak_limit
 
         # Normalize the spectra to a max value of 1
-        max_non_q_peak = np.max(normalized_spectra)
-        if max_non_q_peak > 0:
-            normalized_spectra /= max_non_q_peak
+        max_value = np.max(normalized_spectra)
+        if max_value > 0:
+            normalized_spectra /= max_value
     else:
         # Standard normalization if Q-branch handling is not specified
         max_peak = np.max(binned_spectra)
