@@ -138,7 +138,7 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin and normalize spectra, with Q-branch handling
+# Function to bin and normalize spectra, with enhanced Q-branch handling
 def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
@@ -153,19 +153,32 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
 
-    # Normalize the spectra after binning
+    # Enhanced Q-branch handling
     if q_branch_threshold is not None:
-        # Ignore sharp Q-branch peaks by applying the threshold to the peak values
+        # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold)
         q_branch_mask = np.ones_like(binned_spectra, dtype=bool)
         q_branch_mask[peaks] = False
-        
-        # Calculate normalization factor excluding Q-branch peaks
-        max_peak = np.max(binned_spectra[q_branch_mask])
+
+        # Separate Q-branch region and non-Q-branch region
+        non_q_branch_spectra = binned_spectra[q_branch_mask]
+        q_branch_spectra = binned_spectra[~q_branch_mask]
+
+        # Normalize non-Q-branch region
+        if len(non_q_branch_spectra) > 0:
+            max_non_q_peak = np.max(non_q_branch_spectra)
+            normalized_spectra = binned_spectra / max_non_q_peak
+        else:
+            normalized_spectra = binned_spectra  # In case no non-Q-branch regions are found
+
+        # Scale Q-branch region separately to prevent skewing
+        if len(q_branch_spectra) > 0:
+            max_q_peak = np.max(q_branch_spectra)
+            normalized_spectra[~q_branch_mask] = q_branch_spectra / max_q_peak
     else:
         max_peak = np.max(binned_spectra)
+        normalized_spectra = binned_spectra / max_peak
 
-    normalized_spectra = binned_spectra / max_peak
     return normalized_spectra, x_axis[:-1]
 
 # Function to filter molecules by functional group using SMARTS
@@ -402,14 +415,14 @@ with main_col2:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
                     else:
                         if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=None)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
