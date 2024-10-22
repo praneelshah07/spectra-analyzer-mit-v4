@@ -138,8 +138,8 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin and normalize spectra, with enhanced Q-branch handling
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, q_branch_suppress_factor=0.05):
+# Function to bin and normalize spectra, with alternative Q-branch handling
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -153,23 +153,23 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
 
-    # Enhanced Q-branch handling
+    # Alternative Q-branch handling
     if q_branch_threshold is not None:
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
-        widths = peak_widths(binned_spectra, peaks, rel_height=0.5)[0]
 
         # Create a copy of the binned spectra for modification
         normalized_spectra = binned_spectra.copy()
 
-        # Suppress Q-branch peaks by scaling down their intensity
-        for peak, width in zip(peaks, widths):
-            left_idx = max(0, int(peak - width // 2))
-            right_idx = min(len(binned_spectra), int(peak + width // 2))
-            # Apply suppression factor to reduce the intensity of the Q-branch peak
-            normalized_spectra[left_idx:right_idx] *= q_branch_suppress_factor
+        # Reduce the intensity of the large Q-branch peak to avoid suppressing other peaks
+        for peak in peaks:
+            # Limit the peak value to the median of the spectrum to normalize large Q-branch peaks
+            peak_value = normalized_spectra[peak]
+            median_value = np.median(binned_spectra)
+            if peak_value > median_value:
+                normalized_spectra[peak] = median_value
 
-        # Normalize the spectra to a max value of 1, excluding suppressed Q-branch areas
+        # Normalize the spectra to a max value of 1
         max_non_q_peak = np.max(normalized_spectra)
         if max_non_q_peak > 0:
             normalized_spectra /= max_non_q_peak
