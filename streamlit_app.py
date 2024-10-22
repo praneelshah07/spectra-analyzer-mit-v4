@@ -139,7 +139,7 @@ def load_data_from_zip(zip_url):
         return None
 
 # Function to bin and normalize spectra, with enhanced Q-branch handling
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, q_branch_suppress_factor=0.3):
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, q_branch_suppress_factor=0.1):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -156,7 +156,7 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
         # Detect peaks to identify potential Q-branches
-        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.1)
+        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.2, width=1)
         widths = peak_widths(binned_spectra, peaks, rel_height=0.5)[0]
 
         # Create a copy of the binned spectra for modification
