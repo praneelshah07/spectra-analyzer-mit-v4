@@ -155,38 +155,42 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
-        # Calculate a dynamic threshold for peak detection based on standard deviation
-        dynamic_threshold = np.mean(binned_spectra) + 1.5 * np.std(binned_spectra)
-
         # Detect peaks to identify potential Q-branches
-        peaks, properties = find_peaks(binned_spectra, height=dynamic_threshold, prominence=0.1)
+        peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.1)
         widths = peak_widths(binned_spectra, peaks, rel_height=0.5)[0]
 
-        # Create a mask for Q-branch peaks based on their prominence and width
-        q_branch_mask = np.ones_like(binned_spectra, dtype=bool)
+        # Create masks for Q-branch and non-Q-branch regions
+        q_branch_mask = np.zeros_like(binned_spectra, dtype=bool)
         for peak, width in zip(peaks, widths):
             left_idx = max(0, int(peak - width // 2))
             right_idx = min(len(binned_spectra), int(peak + width // 2))
-            q_branch_mask[left_idx:right_idx] = False
+            q_branch_mask[left_idx:right_idx] = True
 
-        # Separate Q-branch region and non-Q-branch region
-        non_q_branch_spectra = binned_spectra[q_branch_mask]
-        q_branch_spectra = binned_spectra[~q_branch_mask]
+        # Separate Q-branch and non-Q-branch regions
+        non_q_branch_spectra = binned_spectra[~q_branch_mask]
+        q_branch_spectra = binned_spectra[q_branch_mask]
 
         # Normalize non-Q-branch region
         if len(non_q_branch_spectra) > 0:
             max_non_q_peak = np.max(non_q_branch_spectra)
-            normalized_spectra = binned_spectra / max_non_q_peak
+            if max_non_q_peak > 0:
+                normalized_spectra = binned_spectra / max_non_q_peak
+            else:
+                normalized_spectra = binned_spectra
         else:
             normalized_spectra = binned_spectra  # In case no non-Q-branch regions are found
 
         # Scale Q-branch region separately to prevent skewing
         if len(q_branch_spectra) > 0:
             max_q_peak = np.max(q_branch_spectra)
-            normalized_spectra[~q_branch_mask] = q_branch_spectra / max_q_peak
+            if max_q_peak > 0:
+                normalized_spectra[q_branch_mask] = q_branch_spectra / max_q_peak
     else:
         max_peak = np.max(binned_spectra)
-        normalized_spectra = binned_spectra / max_peak
+        if max_peak > 0:
+            normalized_spectra = binned_spectra / max_peak
+        else:
+            normalized_spectra = binned_spectra
 
     return normalized_spectra, x_axis[:-1]
 
