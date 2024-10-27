@@ -220,6 +220,21 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
     
     elif bond_pattern == "C#N":
         bond_smarts = "[C]#[N]"  # SMARTS for a nitrile group (C≡N)
+    
+    elif bond_pattern == "S-H":
+        bond_smarts = "[S][H]"  # SMARTS for a sulfur-hydrogen bond (thiol)
+    
+    elif bond_pattern == "N=N":
+        bond_smarts = "[N]=[N]"  # SMARTS for an azo group (N=N)
+    
+    elif bond_pattern == "C-S":
+        bond_smarts = "[C][S]"  # SMARTS for a carbon-sulfur single bond (thioether)
+    
+    elif bond_pattern == "C=N":
+        bond_smarts = "[C]=[N]"  # SMARTS for an imine group (C=N)
+    
+    elif bond_pattern == "P-H":
+        bond_smarts = "[P][H]"  # SMARTS for a phosphorus-hydrogen bond (phosphine)
 
     else:
         try:
