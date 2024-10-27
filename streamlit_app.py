@@ -196,10 +196,13 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
                 # Apply simple smoothing by averaging the values around the Q-branch
                 normalized_spectra[peak] = np.mean([normalized_spectra[peak - 1], normalized_spectra[peak], normalized_spectra[peak + 1]])
 
+        # Further smooth the entire spectrum to minimize sharp Q-branch effects
+        smoothed_spectra = np.convolve(normalized_spectra, np.ones(5)/5, mode='same')
+
         # Normalize the spectra to a max value of 1
-        max_value = np.max(normalized_spectra)
+        max_value = np.max(smoothed_spectra)
         if max_value > 0:
-            normalized_spectra /= max_value
+            normalized_spectra = smoothed_spectra / max_value
     else:
         # Standard normalization if Q-branch handling is not specified
         max_peak = np.max(binned_spectra)
