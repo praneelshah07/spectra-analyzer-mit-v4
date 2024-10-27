@@ -77,6 +77,9 @@ st.markdown("""
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
+# Adding a paragraph break to separate the welcome banner from the sidebar content
+st.markdown('<br><br>', unsafe_allow_html=True)
+
 # User authentication to enable multi-tenancy
 st.sidebar.title("User Login")
 username = st.sidebar.text_input("Username")
@@ -96,13 +99,13 @@ else:
 user_id = st.session_state['user_id']
 
 # Initialize session state for functional groups based on user
-if f'{user_id}_functional_groups' not in st.session_state:
-    st.session_state[f'{user_id}_functional_groups'] = []
+functional_groups_key = f'{user_id}_functional_groups'
+if functional_groups_key not in st.session_state:
+    st.session_state[functional_groups_key] = []
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
-        
         <div class="description">   
         <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
@@ -396,16 +399,16 @@ with col1:
                     add_fg = st.form_submit_button("Add Functional Group")
             
                 if add_fg:
-                    st.session_state[f'{user_id}_functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+                    st.session_state[functional_groups_key].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
             
                 # Display existing functional group labels and allow deletion
                 st.write("Current Functional Group Labels:")
-                for i, fg in enumerate(st.session_state['functional_groups']):
+                for i, fg in enumerate(st.session_state[functional_groups_key]):
                     label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
                     label_col1.write(f"Functional Group: {fg['Functional Group']}")
                     label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
                     if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
-                        st.session_state['functional_groups'].pop(i)
+                        st.session_state[functional_groups_key].pop(i)
 
             # Step 6: Plot Sonogram (Outside of Expander)
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
@@ -499,7 +502,7 @@ with main_col2:
                                         fontsize=10, ha='center', color=color_options[i % len(color_options)])
                                                              
                 # Add functional group labels for background gases based on wavelength
-                for fg in st.session_state['functional_groups']:
+                for fg in st.session_state[functional_groups_key]:
                     fg_wavelength = fg['Wavelength']
                     fg_label = fg['Functional Group']
                     ax.axvline(fg_wavelength, color='grey', linestyle='--')
