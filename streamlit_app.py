@@ -103,7 +103,11 @@ if functional_groups_key not in st.session_state:
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
-        <div class="description">   
+        <div class="description">  
+        
+        # Adding a paragraph break to separate the welcome banner from the sidebar content
+        st.markdown('<br><br>', unsafe_allow_html=True)
+        
         <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
         <p><b>Getting Started:</b>
