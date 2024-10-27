@@ -370,7 +370,7 @@ with col1:
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
         
     # The molecule selection (outside the expander)
-    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', filtered_smiles)
+    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', data['SMILES'].unique())
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
