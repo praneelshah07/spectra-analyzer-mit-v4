@@ -14,6 +14,7 @@ from scipy.cluster.hierarchy import linkage, leaves_list
 import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
+import uuid
 
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
@@ -105,9 +106,27 @@ st.sidebar.markdown("""
         </div>
     """, unsafe_allow_html=True)
 
-# Initialize session state for functional groups
-if 'functional_groups' not in st.session_state:
-    st.session_state['functional_groups'] = []
+# User authentication to enable multi-tenancy
+st.sidebar.title("User Login")
+username = st.sidebar.text_input("Username")
+password = st.sidebar.text_input("Password", type="password")
+login_button = st.sidebar.button("Login")
+
+# Simulated authentication (for demo purposes)
+if login_button and username and password:
+    user_id = str(uuid.uuid4())  # Assign a unique ID for each user session
+    st.session_state['user_id'] = user_id
+    st.sidebar.success(f"Logged in as {username}")
+else:
+    if 'user_id' not in st.session_state:
+        st.sidebar.error("Please log in to use the app.")
+        st.stop()
+
+user_id = st.session_state['user_id']
+
+# Initialize session state for functional groups based on user
+if f'{user_id}_functional_groups' not in st.session_state:
+    st.session_state[f'{user_id}_functional_groups'] = []
 
 # Preloaded zip
 ZIP_URL = 'https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/ASM_Vapor_Spectra.csv.zip'
@@ -370,7 +389,7 @@ with col1:
                     add_fg = st.form_submit_button("Add Functional Group")
             
                 if add_fg:
-                    st.session_state['functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+                    st.session_state[f'{user_id}_functional_groups'].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
             
                 # Display existing functional group labels and allow deletion
                 st.write("Current Functional Group Labels:")
