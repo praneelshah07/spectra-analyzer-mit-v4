@@ -101,7 +101,7 @@ if f'{user_id}_functional_groups' not in st.session_state:
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool. <br> </div>
         <div class="description">   
         <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
