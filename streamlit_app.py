@@ -387,6 +387,9 @@ with col1:
     # Background gas selection
     background_smiles = st.multiselect('Select Background Molecules:', data['SMILES'].unique())
 
+    # Background molecule opacity control
+    background_opacity = st.slider('Background Molecule Opacity (Default: 0.01)', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
+
     # The molecule selection (outside the expander)
     selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
@@ -444,7 +447,7 @@ with main_col2:
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
+                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=background_opacity)
                
                 for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
@@ -467,8 +470,8 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                  # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
-
+                                        fontsize=10, ha='center', color=color_options[i % len(color_options
+                                                             
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
                     fg_wavelength = fg['Wavelength']
