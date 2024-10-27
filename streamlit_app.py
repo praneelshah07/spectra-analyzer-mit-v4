@@ -77,6 +77,28 @@ st.markdown("""
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
+# User authentication to enable multi-tenancy
+st.sidebar.title("User Login")
+username = st.sidebar.text_input("Username")
+password = st.sidebar.text_input("Password", type="password")
+login_button = st.sidebar.button("Login")
+
+# Simulated authentication (for demo purposes)
+if login_button and username and password:
+    user_id = str(uuid.uuid4())  # Assign a unique ID for each user session
+    st.session_state['user_id'] = user_id
+    st.sidebar.success(f"Logged in as {username}")
+else:
+    if 'user_id' not in st.session_state:
+        st.sidebar.error("Please log in to use the app.")
+        st.stop()
+
+user_id = st.session_state['user_id']
+
+# Initialize session state for functional groups based on user
+if f'{user_id}_functional_groups' not in st.session_state:
+    st.session_state[f'{user_id}_functional_groups'] = []
+
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
@@ -105,28 +127,6 @@ st.sidebar.markdown("""
         View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</p> 
         </div>
     """, unsafe_allow_html=True)
-
-# User authentication to enable multi-tenancy
-st.sidebar.title("User Login")
-username = st.sidebar.text_input("Username")
-password = st.sidebar.text_input("Password", type="password")
-login_button = st.sidebar.button("Login")
-
-# Simulated authentication (for demo purposes)
-if login_button and username and password:
-    user_id = str(uuid.uuid4())  # Assign a unique ID for each user session
-    st.session_state['user_id'] = user_id
-    st.sidebar.success(f"Logged in as {username}")
-else:
-    if 'user_id' not in st.session_state:
-        st.sidebar.error("Please log in to use the app.")
-        st.stop()
-
-user_id = st.session_state['user_id']
-
-# Initialize session state for functional groups based on user
-if f'{user_id}_functional_groups' not in st.session_state:
-    st.session_state[f'{user_id}_functional_groups'] = []
 
 # Preloaded zip
 ZIP_URL = 'https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/ASM_Vapor_Spectra.csv.zip'
