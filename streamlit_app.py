@@ -470,7 +470,7 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                  # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options
+                                        fontsize=10, ha='center', color=color_options[i % len(color_options)
                                                              
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state['functional_groups']:
