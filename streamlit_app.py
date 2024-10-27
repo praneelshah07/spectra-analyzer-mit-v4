@@ -384,8 +384,11 @@ with col1:
             # Step 6: Plot Sonogram (Outside of Expander)
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
         
+    # Background gas selection
+    background_smiles = st.multiselect('Select Background Molecules:', data['SMILES'].unique())
+
     # The molecule selection (outside the expander)
-    selected_smiles = st.multiselect('Select molecules by SMILES to highlight:', data['SMILES'].unique())
+    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
     # Step 8: Confirm button
     confirm_button = st.button('Confirm Selection and Start Plotting')
@@ -435,7 +438,7 @@ with main_col2:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
-                    elif smiles in filtered_smiles:
+                    elif smiles in background_smiles or (not background_smiles and smiles in filtered_smiles):
                         if bin_type != 'None':
                             spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
                         else:
