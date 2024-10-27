@@ -426,7 +426,7 @@ with main_col2:
                 random.shuffle(color_options)
 
                 target_spectra = {}
-                for smiles, spectra in data[data['SMILES'].isin(filtered_smiles)][['SMILES', 'Raw_Spectra_Intensity']].values:
+                for smiles, spectra in data[['SMILES', 'Raw_Spectra_Intensity']].values:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
@@ -435,7 +435,7 @@ with main_col2:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
-                    else:
+                    elif smiles in filtered_smiles:
                         if bin_type != 'None':
                             spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
                         else:
@@ -443,7 +443,7 @@ with main_col2:
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=0.01)
                
-                for i,smiles in enumerate(target_spectra):
+                for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
 
