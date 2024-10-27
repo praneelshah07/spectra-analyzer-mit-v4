@@ -185,7 +185,13 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         for peak in peaks:
             if normalized_spectra[peak] > max_peak_limit:
                 scaling_factor = max_peak_limit / normalized_spectra[peak]
-                normalized_spectra *= scaling_factor
+                normalized_spectra[peak] *= scaling_factor
+
+        # Apply local smoothing around the Q-branch
+        for peak in peaks:
+            if peak > 1 and peak < len(normalized_spectra) - 2:
+                # Apply simple smoothing by averaging the values around the Q-branch
+                normalized_spectra[peak] = np.mean([normalized_spectra[peak - 1], normalized_spectra[peak], normalized_spectra[peak + 1]])
 
         # Normalize the spectra to a max value of 1
         max_value = np.max(normalized_spectra)
