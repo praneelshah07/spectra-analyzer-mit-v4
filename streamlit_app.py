@@ -103,7 +103,7 @@ if functional_groups_key not in st.session_state:
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
         <div class="sidebar"> Welcome to the Spectra Visualization Tool. 
-        <b></b>
+        <p><b></b></p>
         </div>
         
         <div class="description">  
