@@ -533,7 +533,7 @@ with main_col2:
                     ax.legend()
 
                 # Convert to Bokeh interactive plot for better zooming/panning
-                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength (µm)", y_axis_label="Absorbance (Normalized to 1)",
+                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength (microns)", y_axis_label="Absorbance",
                                   plot_width=800, plot_height=400, tools="pan,box_zoom,reset,save")
                 bokeh_fig.toolbar.active_drag = "box_zoom"
 
