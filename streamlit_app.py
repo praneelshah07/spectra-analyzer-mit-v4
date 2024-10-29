@@ -15,6 +15,10 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
+from bokeh.plotting import figure
+from bokeh.models import HoverTool
+from bokeh.embed import components
+from bokeh.resources import INLINE
 
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
@@ -77,6 +81,9 @@ st.markdown("""
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
+# Adding a paragraph break to separate the welcome banner from the sidebar content
+st.markdown('<br><br>', unsafe_allow_html=True)
+
 # User authentication to enable multi-tenancy
 st.sidebar.title("User Login")
 username = st.sidebar.text_input("Username")
@@ -102,12 +109,8 @@ if functional_groups_key not in st.session_state:
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool. 
-        <p><b></b></p>
-        </div>
-        
-        <div class="description">  
-        
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
+        <div class="description">   
         <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
         <p><b>Getting Started:</b>
@@ -531,8 +534,18 @@ with main_col2:
                 if selected_smiles:
                     ax.legend()
 
-                st.pyplot(fig)
-        
+                # Convert to Bokeh interactive plot for better zooming/panning
+                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength ($\mu$m)", y_axis_label="Absorbance (Normalized to 1)",
+                                  plot_width=800, plot_height=400, tools="pan,box_zoom,reset,save")
+                bokeh_fig.toolbar.active_drag = "box_zoom"
+
+                for i, smiles in enumerate(target_spectra):
+                    spectra = target_spectra[smiles]
+                    bokeh_fig.line(x_axis, spectra, line_width=2, legend_label=smiles, color=color_options[i % len(color_options)])
+
+                # Display interactive Bokeh plot
+                st.bokeh_chart(bokeh_fig, use_container_width=True)
+
                 # Download button for the spectra plot
                 buf = io.BytesIO()
                 fig.savefig(buf, format='png')
