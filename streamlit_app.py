@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from matplotlib.style import use
 use('fast')
 import json
-import random
 import zipfile
 import io
 from scipy.signal import find_peaks, peak_widths
@@ -465,7 +464,7 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = Category10[10]
+                color_options = list(Category10[10])
                 random.shuffle(color_options)
 
                 target_spectra = {}
