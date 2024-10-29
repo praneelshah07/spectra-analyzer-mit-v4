@@ -19,6 +19,7 @@ from bokeh.plotting import figure
 from bokeh.models import HoverTool
 from bokeh.embed import components
 from bokeh.resources import INLINE
+from bokeh.palettes import Category10
 
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
@@ -464,7 +465,7 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
+                color_options = Category10[10]
                 random.shuffle(color_options)
 
                 target_spectra = {}
@@ -535,7 +536,7 @@ with main_col2:
                     ax.legend()
 
                 # Convert to Bokeh interactive plot for better zooming/panning
-                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength ($\mu$m)", y_axis_label="Absorbance (Normalized to 1)",
+                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength (µm)", y_axis_label="Absorbance (Normalized to 1)",
                                   plot_width=800, plot_height=400, tools="pan,box_zoom,reset,save")
                 bokeh_fig.toolbar.active_drag = "box_zoom"
 
