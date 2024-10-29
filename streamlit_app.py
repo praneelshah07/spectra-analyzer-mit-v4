@@ -526,8 +526,8 @@ with main_col2:
                     labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                     bottom=True, top=True, left=True, right=True)
 
-                ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+                ax.set_xlabel("Wavelength (microns)", fontsize=22)
+                ax.set_ylabel("Absorbance", fontsize=22)
 
                 if selected_smiles:
                     ax.legend()
