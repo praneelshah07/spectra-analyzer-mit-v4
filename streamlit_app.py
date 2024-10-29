@@ -82,9 +82,6 @@ st.markdown("""
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
 
-# Adding a paragraph break to separate the welcome banner from the sidebar content
-st.markdown('<br><br>', unsafe_allow_html=True)
-
 # User authentication to enable multi-tenancy
 st.sidebar.title("User Login")
 username = st.sidebar.text_input("Username")
