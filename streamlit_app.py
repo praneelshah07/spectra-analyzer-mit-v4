@@ -19,6 +19,7 @@ from bokeh.models import HoverTool
 from bokeh.embed import components
 from bokeh.resources import INLINE
 from bokeh.palettes import Category10
+import random
 
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
@@ -464,7 +465,7 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = list(Category10[10])
+                color_options = list(Category10[10])  # Convert the Category10 palette to a list to ensure it can be shuffled.
                 random.shuffle(color_options)
 
                 target_spectra = {}
