@@ -526,14 +526,14 @@ with main_col2:
                     labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                     bottom=True, top=True, left=True, right=True)
 
-                ax.set_xlabel("Wavelength (microns)", fontsize=22)
+                ax.set_xlabel("Wavelength in microns", fontsize=22)
                 ax.set_ylabel("Absorbance", fontsize=22)
 
                 if selected_smiles:
                     ax.legend()
 
                 # Convert to Bokeh interactive plot for better zooming/panning
-                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength (microns)", y_axis_label="Absorbance",
+                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength in microns", y_axis_label="Absorbance",
                                   plot_width=800, plot_height=400, tools="pan,box_zoom,reset,save")
                 bokeh_fig.toolbar.active_drag = "box_zoom"
 
