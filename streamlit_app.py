@@ -179,8 +179,15 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
+        # Debugging statement to check if q_branch_threshold is properly passed
+        st.write(f"Debug: q_branch_threshold value: {q_branch_threshold}")
+
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
+
+        # Debugging statement to check detected peaks
+        st.write(f"Debug: Detected Q-branch peaks at indices: {peaks}")
+        st.write(f"Debug: Peak properties: {properties}")
 
         # Create a copy of the binned spectra for modification
         normalized_spectra = binned_spectra.copy()
@@ -211,10 +218,6 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
             normalized_spectra = binned_spectra / max_peak
         else:
             normalized_spectra = binned_spectra
-
-    # Debugging statements to verify Q-branch behavior
-    st.write(f"Detected Q-branch peaks: {peaks}")
-    st.write(f"Normalized spectra (after Q-branch handling): {normalized_spectra[:10]}...")
 
     return normalized_spectra, x_axis[:-1]
 
@@ -473,14 +476,15 @@ with main_col2:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
+                            st.write(f"Debug: Calling bin_and_normalize_spectra for {smiles} with bin_size={bin_size}")
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.1)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
                     elif smiles in background_smiles or (not background_smiles and smiles in filtered_smiles):
                         if bin_type != 'None':
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.1)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
@@ -529,7 +533,7 @@ with main_col2:
                     labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                     bottom=True, top=True, left=True, right=True)
 
-                ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+                ax.set_xlabel("Wavelength ($μm)", fontsize=22)
                 ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
                 if selected_smiles:
@@ -542,3 +546,4 @@ with main_col2:
                 fig.savefig(buf, format='png')
                 buf.seek(0)
                 st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
+            
