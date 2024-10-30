@@ -199,10 +199,11 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
         # Cap the intensity of very large Q-branch peaks without affecting other peaks
         for peak in peaks:
+            st.write(f"Debug: Handling peak at index {peak} with intensity {normalized_spectra[peak]}")
             if normalized_spectra[peak] > max_peak_limit:
                 scaling_factor = max_peak_limit / normalized_spectra[peak]
                 normalized_spectra[peak] *= scaling_factor
-                st.write(f"Debug: Peak intensity scaled down at index {peak} by factor {scaling_factor}")
+                st.write(f"Debug: Scaling down peak intensity at index {peak} by factor {scaling_factor}")
 
         # Apply local smoothing around the Q-branch
         for peak in peaks:
