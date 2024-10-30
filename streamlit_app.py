@@ -167,6 +167,9 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
+    # Check if q_branch_threshold is being received
+    st.write(f"Debug: Received q_branch_threshold: {q_branch_threshold}")
+
     if 'wavelength' in bin_type:
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
@@ -176,17 +179,15 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
+    st.write("Debug: Binning completed, binned_spectra calculated.")
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
-        # Debugging statement to check if q_branch_threshold is properly passed
-        st.write(f"Debug: q_branch_threshold value: {q_branch_threshold}")
+        st.write(f"Debug: q_branch_threshold is set, proceeding with Q-branch handling. Value: {q_branch_threshold}")
 
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
-
-        # Debugging statement to check detected peaks
-        st.write(f"Debug: Detected Q-branch peaks at indices: {peaks}")
+        st.write(f"Debug: Detected Q-branch peaks: {peaks}")
         st.write(f"Debug: Peak properties: {properties}")
 
         # Create a copy of the binned spectra for modification
@@ -194,14 +195,17 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
         # Cap the intensity of very large Q-branch peaks without affecting other peaks
         for peak in peaks:
+            st.write(f"Debug: Handling peak at index {peak} with intensity {normalized_spectra[peak]}")
             if normalized_spectra[peak] > max_peak_limit:
                 scaling_factor = max_peak_limit / normalized_spectra[peak]
                 normalized_spectra[peak] *= scaling_factor
+                st.write(f"Debug: Scaling down peak intensity at index {peak} with scaling factor {scaling_factor}")
 
         # Apply local smoothing around the Q-branch
         for peak in peaks:
             if peak > 1 and peak < len(normalized_spectra) - 2:
                 # Apply simple smoothing by averaging the values around the Q-branch
+                st.write(f"Debug: Smoothing around peak at index {peak}")
                 normalized_spectra[peak] = np.mean([normalized_spectra[peak - 1], normalized_spectra[peak], normalized_spectra[peak + 1]])
 
         # Further smooth the entire spectrum to minimize sharp Q-branch effects
@@ -209,10 +213,12 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
         # Normalize the spectra to a max value of 1
         max_value = np.max(smoothed_spectra)
+        st.write(f"Debug: Maximum value of smoothed spectra: {max_value}")
         if max_value > 0:
             normalized_spectra = smoothed_spectra / max_value
     else:
         # Standard normalization if Q-branch handling is not specified
+        st.write("Debug: q_branch_threshold not set, proceeding with standard normalization.")
         max_peak = np.max(binned_spectra)
         if max_peak > 0:
             normalized_spectra = binned_spectra / max_peak
