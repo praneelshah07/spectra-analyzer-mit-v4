@@ -486,8 +486,12 @@ with main_col2:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
-                            st.write(f"Debug: Calling bin_and_normalize_spectra for {smiles} with bin_size={bin_size}")
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.1)
+                            # Add a debug statement to check if q_branch_threshold is being passed correctly
+                            q_branch_threshold = 0.1
+                            st.write(f"Debug: q_branch_threshold set to {q_branch_threshold} for {smiles}")
+                            st.write(f"Debug: Calling bin_and_normalize_spectra for {smiles} with bin_size={bin_size} and q_branch_threshold={q_branch_threshold}")
+                            
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
                         else:
                             st.write(f"Debug: Normalizing spectra without binning for {smiles}")
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
@@ -495,13 +499,17 @@ with main_col2:
                         target_spectra[smiles] = spectra
                     elif smiles in background_smiles or (not background_smiles and smiles in filtered_smiles):
                         if bin_type != 'None':
-                            st.write(f"Debug: Calling bin_and_normalize_spectra for background molecule {smiles} with bin_size={bin_size}")
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.1)
+                            # Add a debug statement to check if q_branch_threshold is being passed correctly
+                            q_branch_threshold = 0.1
+                            st.write(f"Debug: q_branch_threshold set to {q_branch_threshold} for background molecule {smiles}")
+                            st.write(f"Debug: Calling bin_and_normalize_spectra for background molecule {smiles} with bin_size={bin_size} and q_branch_threshold={q_branch_threshold}")
+    
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=background_opacity)
-               
+                   
                 for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
@@ -525,8 +533,8 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                  # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
-                                                             
+                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])     
+                                                                 
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state[functional_groups_key]:
                     fg_wavelength = fg['Wavelength']
@@ -554,10 +562,11 @@ with main_col2:
                     ax.legend()
     
                 st.pyplot(fig)
-        
+            
                 # Download button for the spectra plot
                 buf = io.BytesIO()
                 fig.savefig(buf, format='png')
                 buf.seek(0)
                 st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
-                                                
+    
+                                                    
