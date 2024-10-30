@@ -177,13 +177,10 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
 
-    # Debug statement to check if q_branch_threshold has a valid value
-    st.write(f"Debug: q_branch_threshold passed to function: {q_branch_threshold}")
-
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
         # Debugging statement to check if q_branch_threshold is properly passed
-        st.write(f"Debug: q_branch_threshold value before finding peaks: {q_branch_threshold}")
+        st.write(f"Debug: q_branch_threshold value: {q_branch_threshold}")
 
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
@@ -487,6 +484,7 @@ with main_col2:
                         target_spectra[smiles] = spectra
                     elif smiles in background_smiles or (not background_smiles and smiles in filtered_smiles):
                         if bin_type != 'None':
+                            st.write(f"Debug: Calling bin_and_normalize_spectra for background molecule {smiles} with bin_size={bin_size}")
                             spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.1)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
@@ -500,6 +498,8 @@ with main_col2:
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
                         peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
+                        st.write(f"Debug: Detected peaks for {smiles} at indices: {peaks}")
+                        st.write(f"Debug: Peak properties: {properties}")
                         
                         # Sort the peaks by their prominence and select the top `num_peaks`
                         if len(peaks) > 0:
@@ -549,4 +549,4 @@ with main_col2:
                 fig.savefig(buf, format='png')
                 buf.seek(0)
                 st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
-            
+                
