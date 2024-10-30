@@ -163,7 +163,7 @@ def load_data_from_zip(zip_url):
         return None
 
 # Function to bin and normalize spectra, with enhanced Q-branch normalization
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=0.7):
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=1):
     st.write("Debug: Entered bin_and_normalize_spectra function.")
     st.write(f"Debug: q_branch_threshold passed to function: {q_branch_threshold}")
 
