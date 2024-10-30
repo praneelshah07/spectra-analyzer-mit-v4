@@ -164,9 +164,6 @@ def load_data_from_zip(zip_url):
 
 # Function to bin and normalize spectra, with enhanced Q-branch normalization
 def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=1):
-    st.write("Debug: Entered bin_and_normalize_spectra function.")
-    st.write(f"Debug: q_branch_threshold passed to function: {q_branch_threshold}")
-
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
@@ -176,12 +173,11 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         digitized = np.digitize(wavelength, bins)
         x_axis = bins
     else:
-        st.write("Debug: No valid binning type provided. Returning without binning.")
         return spectra, None  # No binning if the type is not recognized
 
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
-    st.write("Debug: Binning completed.")
+    #st.write("Debug: Binning completed.")
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
@@ -191,25 +187,25 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
 
         # Debugging statement to check detected peaks
-        st.write(f"Debug: Detected Q-branch peaks at indices: {peaks}")
-        st.write(f"Debug: Peak properties: {properties}")
+        #st.write(f"Debug: Detected Q-branch peaks at indices: {peaks}")
+        #st.write(f"Debug: Peak properties: {properties}")
 
         # Create a copy of the binned spectra for modification
         normalized_spectra = binned_spectra.copy()
 
         # Cap the intensity of very large Q-branch peaks without affecting other peaks
         for peak in peaks:
-            st.write(f"Debug: Handling peak at index {peak} with intensity {normalized_spectra[peak]}")
+            #st.write(f"Debug: Handling peak at index {peak} with intensity {normalized_spectra[peak]}")
             if normalized_spectra[peak] > max_peak_limit:
                 scaling_factor = max_peak_limit / normalized_spectra[peak]
                 normalized_spectra[peak] *= scaling_factor
-                st.write(f"Debug: Scaling down peak intensity at index {peak} by factor {scaling_factor}")
+                #st.write(f"Debug: Scaling down peak intensity at index {peak} by factor {scaling_factor}")
 
         # Apply local smoothing around the Q-branch
         for peak in peaks:
             if peak > 1 and peak < len(normalized_spectra) - 2:
                 # Apply simple smoothing by averaging the values around the Q-branch
-                st.write(f"Debug: Smoothing peak at index {peak}")
+                #st.write(f"Debug: Smoothing peak at index {peak}")
                 normalized_spectra[peak] = np.mean([normalized_spectra[peak - 1], normalized_spectra[peak], normalized_spectra[peak + 1]])
 
         # Further smooth the entire spectrum to minimize sharp Q-branch effects
@@ -217,12 +213,12 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
         # Normalize the spectra to a max value of 1
         max_value = np.max(smoothed_spectra)
-        st.write(f"Debug: Maximum value of smoothed spectra: {max_value}")
+        #st.write(f"Debug: Maximum value of smoothed spectra: {max_value}")
         if max_value > 0:
             normalized_spectra = smoothed_spectra / max_value
     else:
         # Standard normalization if Q-branch handling is not specified
-        st.write("Debug: q_branch_threshold is None, skipping Q-branch handling.")
+        #st.write("Debug: q_branch_threshold is None, skipping Q-branch handling.")
         max_peak = np.max(binned_spectra)
         if max_peak > 0:
             normalized_spectra = binned_spectra / max_peak
@@ -488,12 +484,12 @@ with main_col2:
                         if bin_type != 'None':
                             # Add a debug statement to check if q_branch_threshold is being passed correctly
                             q_branch_threshold = 0.1
-                            st.write(f"Debug: q_branch_threshold set to {q_branch_threshold} for {smiles}")
-                            st.write(f"Debug: Calling bin_and_normalize_spectra for {smiles} with bin_size={bin_size} and q_branch_threshold={q_branch_threshold}")
+                            #st.write(f"Debug: q_branch_threshold set to {q_branch_threshold} for {smiles}")
+                            #st.write(f"Debug: Calling bin_and_normalize_spectra for {smiles} with bin_size={bin_size} and q_branch_threshold={q_branch_threshold}")
                             
                             spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
                         else:
-                            st.write(f"Debug: Normalizing spectra without binning for {smiles}")
+                            #st.write(f"Debug: Normalizing spectra without binning for {smiles}")
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
@@ -501,8 +497,8 @@ with main_col2:
                         if bin_type != 'None':
                             # Add a debug statement to check if q_branch_threshold is being passed correctly
                             q_branch_threshold = 0.1
-                            st.write(f"Debug: q_branch_threshold set to {q_branch_threshold} for background molecule {smiles}")
-                            st.write(f"Debug: Calling bin_and_normalize_spectra for background molecule {smiles} with bin_size={bin_size} and q_branch_threshold={q_branch_threshold}")
+                            #st.write(f"Debug: q_branch_threshold set to {q_branch_threshold} for background molecule {smiles}")
+                            #st.write(f"Debug: Calling bin_and_normalize_spectra for background molecule {smiles} with bin_size={bin_size} and q_branch_threshold={q_branch_threshold}")
     
                             spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
                         else:
@@ -517,8 +513,8 @@ with main_col2:
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
                         peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
-                        st.write(f"Debug: Detected peaks for {smiles} at indices: {peaks}")
-                        st.write(f"Debug: Peak properties: {properties}")
+                        #st.write(f"Debug: Detected peaks for {smiles} at indices: {peaks}")
+                        #st.write(f"Debug: Peak properties: {properties}")
                         
                         # Sort the peaks by their prominence and select the top `num_peaks`
                         if len(peaks) > 0:
