@@ -212,6 +212,10 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
         else:
             normalized_spectra = binned_spectra
 
+    # Debugging statements to verify Q-branch behavior
+    st.write(f"Detected Q-branch peaks: {peaks}")
+    st.write(f"Normalized spectra (after Q-branch handling): {normalized_spectra[:10]}...")
+
     return normalized_spectra, x_axis[:-1]
 
 # Function to filter molecules by functional group using SMARTS
