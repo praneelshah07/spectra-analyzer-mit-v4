@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.style import use
 use('fast')
 import json
+import random
 import zipfile
 import io
 from scipy.signal import find_peaks, peak_widths
@@ -14,12 +15,6 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
-from bokeh.plotting import figure
-from bokeh.models import HoverTool, Legend
-from bokeh.embed import components
-from bokeh.resources import INLINE
-from bokeh.palettes import Category10
-import random
 
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
@@ -107,8 +102,12 @@ if functional_groups_key not in st.session_state:
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool. </div>
-        <div class="description">   
+        <div class="sidebar"> Welcome to the Spectra Visualization Tool. 
+        <p><b></b></p>
+        </div>
+        
+        <div class="description">  
+        
         <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
         <p><b>Getting Started:</b>
@@ -462,7 +461,7 @@ with main_col2:
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
 
-                color_options = list(Category10[10])  # Convert the Category10 palette to a list to ensure it can be shuffled.
+                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
                 random.shuffle(color_options)
 
                 target_spectra = {}
@@ -526,29 +525,14 @@ with main_col2:
                     labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                     bottom=True, top=True, left=True, right=True)
 
-                ax.set_xlabel("Wavelength in microns", fontsize=22)
-                ax.set_ylabel("Absorbance", fontsize=22)
+                ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+                ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
                 if selected_smiles:
                     ax.legend()
 
-                # Convert to Bokeh interactive plot for better zooming/panning
-                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength (µm)", y_axis_label="Absorbance",
-                                  plot_width=800, plot_height=400, tools="pan,box_zoom,reset,save")
-                bokeh_fig.toolbar.active_drag = "box_zoom"
-
-                # Add HoverTool for better interactivity
-                hover = HoverTool(tooltips=[("Wavelength (µm)", "$x"), ("Absorbance", "$y")])
-                bokeh_fig.add_tools(hover)
-
-                # Plot each target spectra in Bokeh
-                for i, smiles in enumerate(target_spectra):
-                    spectra = target_spectra[smiles]
-                    bokeh_fig.line(x_axis, spectra, line_width=2, legend_label=smiles, color=color_options[i % len(color_options)])
-
-                # Display interactive Bokeh plot
-                st.bokeh_chart(bokeh_fig, use_container_width=True)
-
+                st.pyplot(fig)
+        
                 # Download button for the spectra plot
                 buf = io.BytesIO()
                 fig.savefig(buf, format='png')
