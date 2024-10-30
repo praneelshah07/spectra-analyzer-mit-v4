@@ -181,7 +181,7 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
-        st.write(f"Debug: q_branch_threshold is set: {q_branch_threshold}, proceeding with Q-branch handling.")
+        #st.write(f"Debug: q_branch_threshold is set: {q_branch_threshold}, proceeding with Q-branch handling.")
 
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
