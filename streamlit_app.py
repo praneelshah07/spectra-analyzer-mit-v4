@@ -15,7 +15,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
 from bokeh.plotting import figure
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, Legend
 from bokeh.embed import components
 from bokeh.resources import INLINE
 from bokeh.palettes import Category10
@@ -533,10 +533,15 @@ with main_col2:
                     ax.legend()
 
                 # Convert to Bokeh interactive plot for better zooming/panning
-                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength in microns", y_axis_label="Absorbance",
+                bokeh_fig = figure(title="Spectra Visualization", x_axis_label="Wavelength (µm)", y_axis_label="Absorbance",
                                   plot_width=800, plot_height=400, tools="pan,box_zoom,reset,save")
                 bokeh_fig.toolbar.active_drag = "box_zoom"
 
+                # Add HoverTool for better interactivity
+                hover = HoverTool(tooltips=[("Wavelength (µm)", "$x"), ("Absorbance", "$y")])
+                bokeh_fig.add_tools(hover)
+
+                # Plot each target spectra in Bokeh
                 for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     bokeh_fig.line(x_axis, spectra, line_width=2, legend_label=smiles, color=color_options[i % len(color_options)])
