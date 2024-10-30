@@ -177,10 +177,13 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
     # Perform binning by averaging spectra in each bin
     binned_spectra = np.array([np.mean(spectra[digitized == i]) for i in range(1, len(bins))])
 
+    # Debug statement to check if q_branch_threshold has a valid value
+    st.write(f"Debug: q_branch_threshold passed to function: {q_branch_threshold}")
+
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
         # Debugging statement to check if q_branch_threshold is properly passed
-        st.write(f"Debug: q_branch_threshold value: {q_branch_threshold}")
+        st.write(f"Debug: q_branch_threshold value before finding peaks: {q_branch_threshold}")
 
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
