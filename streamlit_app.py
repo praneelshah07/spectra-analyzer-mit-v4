@@ -197,8 +197,10 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
-def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', 
-                             normalization_percentile=95, max_peak_limit=None, debug=False):
+def bin_and_normalize_spectra(
+    spectra, bin_size=None, bin_type='none',
+    normalization_percentile=95, max_peak_limit=1.0, debug=False
+):
     """
     Bins and normalizes spectral data based on the specified percentile.
     
@@ -207,7 +209,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none',
     - bin_size: Size of each bin for binning. If None, no binning is performed.
     - bin_type: Type of binning ('wavelength' or 'none').
     - normalization_percentile: Percentile to use for normalization (e.g., 95).
-    - max_peak_limit: Maximum allowed intensity for peaks after normalization. If None, no clipping is applied.
+    - max_peak_limit: Maximum allowed intensity for peaks after normalization. Default is 1.0.
     - debug: If True, plots the normalization process for debugging purposes.
     
     Returns:
@@ -259,9 +261,11 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none',
 
     return normalized_spectra, x_axis
 
-def bin_and_normalize_spectra_multi_segment(spectra, bin_size=None, bin_type='none', 
-                                           normalization_percentile_low=95, normalization_percentile_high=95, 
-                                           max_peak_limit=None, debug=False):
+def bin_and_normalize_spectra_multi_segment(
+    spectra, bin_size=None, bin_type='none',
+    normalization_percentile_low=95, normalization_percentile_high=95,
+    max_peak_limit=1.0, debug=False
+):
     """
     Bins and normalizes spectral data based on specified percentiles for different segments.
     
@@ -271,7 +275,7 @@ def bin_and_normalize_spectra_multi_segment(spectra, bin_size=None, bin_type='no
     - bin_type: Type of binning ('wavelength' or 'none').
     - normalization_percentile_low: Percentile for the low-wavelength segment.
     - normalization_percentile_high: Percentile for the high-wavelength segment.
-    - max_peak_limit: Maximum allowed intensity for peaks after normalization. If None, no clipping is applied.
+    - max_peak_limit: Maximum allowed intensity for peaks after normalization. Default is 1.0.
     - debug: If True, plots the normalization process for debugging purposes.
     
     Returns:
@@ -328,10 +332,11 @@ def bin_and_normalize_spectra_multi_segment(spectra, bin_size=None, bin_type='no
             st.warning(f"Normalization value is zero in {seg_name}. Skipping normalization for this segment.")
             normalized_spectra[seg_indices] = seg_spectra
         else:
-            normalized_spectra[seg_indices] = seg_spectra / normalization_value
+            normalized_segment = seg_spectra / normalization_value
             if max_peak_limit is not None:
                 # Cap the normalized values at max_peak_limit to prevent extremely high values
-                normalized_spectra[seg_indices] = np.clip(normalized_spectra[seg_indices], 0, max_peak_limit)
+                normalized_segment = np.clip(normalized_segment, 0, max_peak_limit)
+            normalized_spectra[seg_indices] = normalized_segment
 
     # Handle regions outside defined segments if necessary
     # For example, maintain original intensities or apply a different normalization
@@ -782,7 +787,7 @@ with main_col2:
                                     bin_type=bin_type.lower(),
                                     normalization_percentile_low=normalization_percentile_low,
                                     normalization_percentile_high=normalization_percentile_high,
-                                    max_peak_limit=None,  # Remove clipping or set as needed
+                                    max_peak_limit=1.0,  # Ensure y-axis can reach 1.0
                                     debug=False
                                 )
                             # Plot background molecule
@@ -811,7 +816,7 @@ with main_col2:
                                     bin_type=bin_type.lower(),
                                     normalization_percentile_low=normalization_percentile_low,
                                     normalization_percentile_high=normalization_percentile_high,
-                                    max_peak_limit=None,
+                                    max_peak_limit=1.0,
                                     debug=False
                                 )
                             target_spectra[smiles] = normalized_spectra
