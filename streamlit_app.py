@@ -512,7 +512,8 @@ with col1:
             
             if peak_finding_enabled:
                 st.write("Configure Peak Detection Settings:")
-                # Additional settings or descriptions can be added here if needed
+                # Allow users to adjust peak detection parameters
+                # These are already provided above
                 
                 # Step 10: Functional group input for background gas labeling (in wavelength)
                 st.markdown("<hr>", unsafe_allow_html=True)
@@ -546,10 +547,9 @@ with col1:
             st.header("Sonogram Plot")
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # The molecule selection (outside the expander)
+    # The molecule selection (foreground) is now without header and line
     if data is not None:
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.header("Foreground Molecules Selection")
+        # Removed the header and horizontal line for cleaner interface
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
         # Step 12: Confirm button
@@ -600,63 +600,67 @@ with main_col2:
                     if not background_smiles:
                         background_smiles = data['SMILES'].unique()
 
-                    # Process each molecule
-                    for smiles in data['SMILES'].unique():
+                    # First plot background molecules
+                    for smiles in background_smiles:
                         spectra_row = data[data['SMILES'] == smiles]
                         if spectra_row.empty:
                             continue
                         spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                        if smiles in selected_smiles:
-                            # Apply binning and normalization
-                            normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
-                                spectra, 
-                                bin_size=bin_size, 
-                                bin_type=bin_type.lower() if bin_type != 'None' else 'none',
-                                q_branch_threshold=peak_height,  # Using peak_height as threshold
-                                max_peak_limit=0.7,
-                                debug=False  # Disable debug mode for regular plotting
+                        # Apply binning and normalization
+                        normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
+                            spectra, 
+                            bin_size=bin_size, 
+                            bin_type=bin_type.lower() if bin_type != 'None' else 'none',
+                            q_branch_threshold=peak_height,  # Using peak_height as threshold
+                            max_peak_limit=0.7,
+                            debug=False  # Disable debug mode for regular plotting
+                        )
+                        # Plot background molecule
+                        ax.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
+
+                    # Then plot foreground molecules to ensure they are on top
+                    for smiles in selected_smiles:
+                        spectra_row = data[data['SMILES'] == smiles]
+                        if spectra_row.empty:
+                            continue
+                        spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                        # Apply binning and normalization
+                        normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
+                            spectra, 
+                            bin_size=bin_size, 
+                            bin_type=bin_type.lower() if bin_type != 'None' else 'none',
+                            q_branch_threshold=peak_height,  # Using peak_height as threshold
+                            max_peak_limit=0.7,
+                            debug=False  # Disable debug mode for regular plotting
+                        )
+                        target_spectra[smiles] = normalized_spectra
+
+                        # Plot foreground molecule
+                        ax.fill_between(x_axis, 0, normalized_spectra, color=color_options[len(target_spectra) % len(color_options)], alpha=0.7, label=smiles)
+
+                        if peak_finding_enabled:
+                            # Detect peaks with user-defined parameters
+                            detected_peaks, detected_properties = find_peaks(
+                                normalized_spectra, 
+                                height=peak_height, 
+                                prominence=peak_prominence, 
+                                width=peak_width
                             )
-                            target_spectra[smiles] = normalized_spectra
 
-                            # Plot foreground molecule
-                            ax.fill_between(x_axis, 0, normalized_spectra, color=color_options[len(target_spectra) % len(color_options)], alpha=0.5, label=smiles)
+                            # Sort the peaks by their prominence and select the top `num_peaks`
+                            if len(detected_peaks) > 0:
+                                prominences = detected_properties['prominences']
+                                peaks_with_prominences = sorted(zip(detected_peaks, prominences), key=lambda x: x[1], reverse=True)
+                                num_peaks = st.sidebar.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+                                top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                            if peak_finding_enabled:
-                                # Detect peaks with user-defined parameters
-                                detected_peaks, detected_properties = find_peaks(
-                                    normalized_spectra, 
-                                    height=peak_height, 
-                                    prominence=peak_prominence, 
-                                    width=peak_width
-                                )
-
-                                # Sort the peaks by their prominence and select the top `num_peaks`
-                                if len(detected_peaks) > 0:
-                                    prominences = detected_properties['prominences']
-                                    peaks_with_prominences = sorted(zip(detected_peaks, prominences), key=lambda x: x[1], reverse=True)
-                                    num_peaks = st.sidebar.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
-                                    top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
-
-                                    # Label the top peaks
-                                    for peak in top_peaks:
-                                        peak_wavelength = x_axis[peak]
-                                        peak_intensity = normalized_spectra[peak]
-                                        # Label the peaks with wavelength
-                                        ax.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
-                                                fontsize=10, ha='center', color=color_options[len(target_spectra) % len(color_options)])
-
-                        elif smiles in background_smiles:
-                            # Apply binning and normalization for background molecules
-                            normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
-                                spectra, 
-                                bin_size=bin_size, 
-                                bin_type=bin_type.lower() if bin_type != 'None' else 'none',
-                                q_branch_threshold=peak_height,  # Using peak_height as threshold
-                                max_peak_limit=0.7,
-                                debug=False
-                            )
-                            # Plot background molecule
-                            ax.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
+                                # Label the top peaks
+                                for peak in top_peaks:
+                                    peak_wavelength = x_axis[peak]
+                                    peak_intensity = normalized_spectra[peak]
+                                    # Label the peaks with wavelength
+                                    ax.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
+                                            fontsize=10, ha='center', color=color_options[len(target_spectra) % len(color_options)])
 
                     # Add functional group labels for background gases based on wavelength
                     for fg in st.session_state[functional_groups_key]:
