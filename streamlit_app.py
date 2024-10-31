@@ -579,7 +579,7 @@ with main_col2:
         if data is None:
             st.error("No data available to plot.")
         else:
-            if selected_smiles.size == 0 and not st.session_state['plot_sonogram']:
+            if (len(selected_smiles) == 0) and (not st.session_state['plot_sonogram']):
                 st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
             else:
                 with st.spinner('Generating plots, this may take some time...'):
@@ -611,7 +611,7 @@ with main_col2:
                             st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
 
                     # Spectra plotting logic
-                    if selected_smiles.size > 0:
+                    if len(selected_smiles) > 0:
                         fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
                         color_options = ['r', 'g', 'b', 'c', 'm', 'y']
                         random.shuffle(color_options)
