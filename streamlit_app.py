@@ -206,55 +206,28 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
         binned_spectra = spectra.copy()
         x_axis = wavelength
 
-    # Enhanced Q-branch handling
-    # Detect peaks to identify potential Q-branches
-    peaks, properties = find_peaks(
-        binned_spectra, 
-        height=q_branch_threshold,      # Threshold for peak height
-        prominence=0.3,                  # Prominence to filter out noise
-        width=2                          # Expected width of Q-branch
-    )
+    # Automatic Q-branch normalization
+    # Find the highest peak in the spectrum
+    highest_peak_idx = np.argmax(binned_spectra)
+    highest_peak_intensity = binned_spectra[highest_peak_idx]
+
+    if highest_peak_intensity == 0:
+        st.warning("Highest peak intensity is zero. Unable to normalize the spectrum.")
+        normalized_spectra = binned_spectra.copy()
+    else:
+        normalized_spectra = binned_spectra / highest_peak_intensity
 
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
         ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
-        ax_debug.plot(x_axis[peaks], binned_spectra[peaks], "x", label='Detected Peaks')
-        ax_debug.set_title("Peak Detection for Q-Branch")
+        ax_debug.plot(x_axis[highest_peak_idx], binned_spectra[highest_peak_idx], "x", label='Highest Peak')
+        ax_debug.set_title("Q-Branch Normalization")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Intensity")
         ax_debug.legend()
         st.pyplot(fig_debug)
 
-    # Create a copy of the binned spectra for modification
-    normalized_spectra = binned_spectra.copy()
-
-    # Cap the intensity of very large Q-branch peaks without affecting other peaks
-    for peak in peaks:
-        if normalized_spectra[peak] > max_peak_limit:
-            scaling_factor = max_peak_limit / normalized_spectra[peak]
-            normalized_spectra[peak] *= scaling_factor
-
-    # Apply local smoothing around the Q-branch
-    for peak in peaks:
-        if 0 < peak < len(normalized_spectra) - 1:
-            # Apply simple smoothing by averaging the values around the Q-branch
-            normalized_spectra[peak] = np.mean([
-                normalized_spectra[peak - 1], 
-                normalized_spectra[peak], 
-                normalized_spectra[peak + 1]
-            ])
-
-    # Further smooth the entire spectrum to minimize sharp Q-branch effects
-    smoothed_spectra = np.convolve(normalized_spectra, np.ones(5)/5, mode='same')
-
-    # Normalize the spectra to a max value of 1
-    max_value = np.max(smoothed_spectra)
-    if max_value > 0:
-        normalized_spectra = smoothed_spectra / max_value
-    else:
-        normalized_spectra = smoothed_spectra
-
-    return normalized_spectra, x_axis, peaks, properties
+    return normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity
 
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
@@ -419,7 +392,7 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection"])
+            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
 
             with tabs[0]:
                 st.subheader("Filters")
@@ -551,6 +524,12 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
+            with tabs[4]:
+                st.subheader("Sonogram")
+
+                # Plot Sonogram Checkbox
+                plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
+
         # Foreground Molecules Selection (Clean Interface)
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
@@ -565,7 +544,46 @@ with main_col2:
             st.error("No data available to plot.")
         else:
             with st.spinner('Generating plots, this may take some time...'):
-                if plot_sonogram := st.checkbox('Plot Sonogram for All Molecules', value=False):
+                # Access the 'plot_sonogram' variable from the Sonogram tab
+                if 'plot_sonogram' in locals():
+                    pass  # 'plot_sonogram' is defined below
+                else:
+                    # Attempt to retrieve 'plot_sonogram' from session state
+                    plot_sonogram = False
+                    if 'plot_sonogram' in st.session_state:
+                        plot_sonogram = st.session_state['plot_sonogram']
+
+                # Retrieve 'plot_sonogram' from the Sonogram tab
+                # Since 'plot_sonogram' is defined within the tabs, it's accessible here
+                # Alternatively, use session state for more reliability
+                plot_sonogram = False
+                if 'plot_sonogram' in st.session_state:
+                    plot_sonogram = st.session_state['plot_sonogram']
+                else:
+                    # Initialize 'plot_sonogram' if not set
+                    plot_sonogram = False
+
+                # Alternatively, directly retrieve 'plot_sonogram' if defined
+                # Note: This approach assumes that the checkbox has been interacted with
+                # Otherwise, it defaults to False
+                # plot_sonogram = st.session_state.get('plot_sonogram', False)
+
+                # Check if 'plot_sonogram' checkbox is checked
+                # Retrieve 'plot_sonogram' from the Sonogram tab
+                # Streamlit runs scripts top to bottom, so 'plot_sonogram' should be defined
+                plot_sonogram = False
+                if 'plot_sonogram' in locals():
+                    plot_sonogram = plot_sonogram
+                elif 'plot_sonogram' in st.session_state:
+                    plot_sonogram = st.session_state['plot_sonogram']
+                else:
+                    plot_sonogram = False
+
+                # However, to ensure reliability, better to pass the variable properly
+                # For simplicity, redefine 'plot_sonogram' outside the tabs using session state
+                plot_sonogram = st.session_state.get('plot_sonogram', False)
+
+                if plot_sonogram:
                     # Sonogram plotting logic
                     intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
                     if len(intensity_data) > 1:
@@ -609,11 +627,11 @@ with main_col2:
                             continue
                         spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                         # Apply binning and normalization
-                        normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
+                        normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
                             spectra, 
                             bin_size=bin_size, 
                             bin_type=bin_type.lower() if bin_type != 'None' else 'none',
-                            q_branch_threshold=peak_height,  # Using peak_height as threshold
+                            q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
                             max_peak_limit=0.7,
                             debug=False  # Disable debug mode for regular plotting
                         )
@@ -627,11 +645,11 @@ with main_col2:
                             continue
                         spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                         # Apply binning and normalization
-                        normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
+                        normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
                             spectra, 
                             bin_size=bin_size, 
                             bin_type=bin_type.lower() if bin_type != 'None' else 'none',
-                            q_branch_threshold=peak_height,  # Using peak_height as threshold
+                            q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
                             max_peak_limit=0.7,
                             debug=False  # Disable debug mode for regular plotting
                         )
