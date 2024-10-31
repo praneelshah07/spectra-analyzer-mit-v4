@@ -71,19 +71,18 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 # User Authentication
 # ---------------------------
 
-# User authentication to enable multi-tenancy
+# Simplified authentication: Only username required
 st.sidebar.title("User Login")
 username = st.sidebar.text_input("Username")
-password = st.sidebar.text_input("Password", type="password")
 login_button = st.sidebar.button("Login")
 
 # Simulated authentication (for demo purposes)
-if login_button and username and password:
+if login_button and username:
     user_id = str(uuid.uuid4())  # Assign a unique ID for each user session
     st.session_state['user_id'] = user_id
     st.sidebar.success(f"Logged in as {username}")
 elif 'user_id' not in st.session_state:
-    st.sidebar.error("Please log in to use the app.")
+    st.sidebar.error("Please enter a username and click 'Login' to use the app.")
     st.stop()
 
 user_id = st.session_state['user_id']
@@ -102,7 +101,7 @@ st.sidebar.markdown("""
     <div class="sidebar-title">Welcome to the Spectra Visualization Tool</div>
     
     <div class="description">  
-    
+
     <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
     <p><b>Getting Started:</b>
@@ -112,7 +111,7 @@ st.sidebar.markdown("""
     Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
     
     <p><b>Advanced Filtering:</b> 
-    Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset.</p> 
+    Search for specific functional groups such as O-H, or C-H. Select a bond pattern to refine the dataset.</p> 
     
     <p><b>Binning Feature:</b>
     Bin a certain amount of data within one datapoint to simplify the plot produced.</p>  
@@ -165,7 +164,7 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
-def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.5, max_peak_limit=0.7, debug=False):
+def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.3, max_peak_limit=0.7, debug=False):
     """
     Function to bin and normalize spectra, with enhanced Q-branch normalization.
     Q-branch normalization is always applied, irrespective of binning.
@@ -209,8 +208,8 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     peaks, properties = find_peaks(
         binned_spectra, 
         height=q_branch_threshold,      # Threshold for peak height
-        prominence=0.5,                  # Prominence to filter out noise
-        width=1                          # Expected width of Q-branch
+        prominence=0.3,                  # Prominence to filter out noise
+        width=2                          # Expected width of Q-branch
     )
 
     if debug:
@@ -493,13 +492,13 @@ with col1:
     # Background gas selection
     if data is not None:
         background_smiles = st.multiselect('Select Background Molecules:', data['SMILES'].unique())
-    
+
         # Background molecule opacity control
         background_opacity = st.slider('Background Molecule Opacity (Default: 0.01)', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
-    
+
         # The molecule selection (outside the expander)
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
-    
+
         # Step 9: Confirm button
         confirm_button = st.button('Confirm Selection and Start Plotting')
 
@@ -544,7 +543,12 @@ with main_col2:
                     random.shuffle(color_options)
                     target_spectra = {}
 
-                    # Process each selected molecule
+                    # Automatically select all background molecules if none specified
+                    if not background_smiles:
+                        background_smiles = data['SMILES'].unique()
+                        st.info("No background molecules specified. All background molecules will be plotted.")
+
+                    # Process each molecule
                     for smiles in data['SMILES'].unique():
                         spectra_row = data[data['SMILES'] == smiles]
                         if spectra_row.empty:
@@ -585,8 +589,10 @@ with main_col2:
                                     for peak in top_peaks:
                                         peak_wavelength = x_axis[peak]
                                         peak_intensity = normalized_spectra[peak]
+                                        # Label the peaks with wavelength
                                         ax.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
                                                 fontsize=10, ha='center', color=color_options[len(target_spectra) % len(color_options)])
+
                         elif smiles in background_smiles:
                             # Apply binning and normalization for background molecules
                             normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
@@ -606,26 +612,26 @@ with main_col2:
                         fg_label = fg['Functional Group']
                         ax.axvline(fg_wavelength, color='grey', linestyle='--')
                         ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
-    
+
                     # Customize plot
                     ax.set_xlim([x_axis.min(), x_axis.max()])
-    
+
                     major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
                     ax.set_xticks(major_ticks)
                     ax.set_xticklabels([str(tick) for tick in major_ticks])
-    
+
                     ax.tick_params(direction="in",
                         labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                         bottom=True, top=True, left=True, right=True)
-    
-                    ax.set_xlabel("Wavelength (µm)", fontsize=22)
+
+                    ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
                     ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
-    
+
                     if selected_smiles:
                         ax.legend()
-    
+
                     st.pyplot(fig)
-    
+
                     # Download button for the spectra plot
                     buf = io.BytesIO()
                     fig.savefig(buf, format='png')
