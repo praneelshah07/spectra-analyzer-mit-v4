@@ -163,11 +163,10 @@ def load_data_from_zip(zip_url):
         return None
 
 # Function to bin and normalize spectra, with enhanced Q-branch normalization
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=1):
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=0.7):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
-    # Bin the spectra if specified
     if 'wavelength' in bin_type:
         bins = np.arange(wavelength.min(), wavelength.max(), bin_size)
         digitized = np.digitize(wavelength, bins)
@@ -180,7 +179,6 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
 
     # Enhanced Q-branch handling
     if q_branch_threshold is not None:
-
         # Detect peaks to identify potential Q-branches
         peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
 
@@ -192,7 +190,6 @@ def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch
             if normalized_spectra[peak] > max_peak_limit:
                 scaling_factor = max_peak_limit / normalized_spectra[peak]
                 normalized_spectra[peak] *= scaling_factor
-                
 
         # Apply local smoothing around the Q-branch
         for peak in peaks:
@@ -442,16 +439,16 @@ with main_col2:
                 if len(intensity_data) > 1:
                     dist_mat = squareform(pdist(intensity_data))
                     ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
-    
+
                     fig, ax = plt.subplots(figsize=(12, 12))
                     ratio = int(len(intensity_data[0]) / len(intensity_data))
                     ax.imshow(np.array(intensity_data)[res_order], aspect=ratio, extent=[4000, 500, len(ordered_dist_mat), 0])
                     ax.set_xlabel("Wavenumber")
                     ax.set_ylabel("Molecules")
-    
+
                     st.pyplot(fig)
                     plt.clf()
-    
+
                     buf = io.BytesIO()
                     fig.savefig(buf, format='png')
                     buf.seek(0)
@@ -463,36 +460,32 @@ with main_col2:
                 fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
                 wavenumber = np.arange(4000, 500, -1)
                 wavelength = 10000 / wavenumber
-    
+
                 color_options = ['r', 'g', 'b', 'c', 'm', 'y']
                 random.shuffle(color_options)
-    
+
                 target_spectra = {}
                 for smiles, spectra in data[['SMILES', 'Raw_Spectra_Intensity']].values:
                     if smiles in selected_smiles:
                         # Apply binning if selected
                         if bin_type != 'None':
-                            # Add a debug statement to check if q_branch_threshold is being passed correctly
-                            q_branch_threshold = 0.1
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         target_spectra[smiles] = spectra
                     elif smiles in background_smiles or (not background_smiles and smiles in filtered_smiles):
                         if bin_type != 'None':
-                            # Add a debug statement to check if q_branch_threshold is being passed correctly
-                            q_branch_threshold = 0.1
-                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=q_branch_threshold)
+                            spectra, x_axis = bin_and_normalize_spectra(spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5)
                         else:
                             spectra = spectra / np.max(spectra)  # Normalize if no binning
                             x_axis = wavelength
                         ax.fill_between(x_axis, 0, spectra, color="k", alpha=background_opacity)
-                   
+               
                 for i, smiles in enumerate(target_spectra):
                     spectra = target_spectra[smiles]
                     ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
-    
+
                     if peak_finding_enabled:
                         # Detect peaks and retrieve peak properties like prominence
                         peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
@@ -510,40 +503,38 @@ with main_col2:
                                 peak_intensity = spectra[peak]
                                  # Label the peaks with wavelength
                                 ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])     
-                                                                 
+                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
+                                                             
                 # Add functional group labels for background gases based on wavelength
                 for fg in st.session_state[functional_groups_key]:
                     fg_wavelength = fg['Wavelength']
                     fg_label = fg['Functional Group']
                     ax.axvline(fg_wavelength, color='grey', linestyle='--')
                     ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
-    
+
                 # Customize plot
                 ax.set_xlim([x_axis.min(), x_axis.max()])
-    
+
                 major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
                 ax.set_xticks(major_ticks)
-    
+
                 # Number of label matches
                 ax.set_xticklabels([str(tick) for tick in major_ticks])
-    
+
                 ax.tick_params(direction="in",
                     labelbottom=True, labeltop=False, labelleft=True, labelright=False,
                     bottom=True, top=True, left=True, right=True)
-    
-                ax.set_xlabel("Wavelength (μm)", fontsize=22)
+
+                ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
                 ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
-    
+
                 if selected_smiles:
                     ax.legend()
-    
+
                 st.pyplot(fig)
-            
+        
                 # Download button for the spectra plot
                 buf = io.BytesIO()
                 fig.savefig(buf, format='png')
                 buf.seek(0)
                 st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
-    
-                                                    
