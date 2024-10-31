@@ -437,7 +437,62 @@ with col1:
                     st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
                     filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
 
-            # Step 4: Bin size input (only for wavelength)
+            # Step 4: Functional Groups for Background Selection
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.header("Background Functional Groups")
+            # Predefined list of common functional groups
+            functional_groups = {
+                "C-H": "[C][H]",
+                "O-H": "[O][H]",
+                "N-H": "[N][H]",
+                "C=O": "[C]=[O]",
+                "C-O": "[C][O]",
+                "C#N": "[C]#[N]",
+                "S-H": "[S][H]",
+                "N=N": "[N]=[N]",
+                "C-S": "[C][S]",
+                "C=N": "[C]=[N]",
+                "P-H": "[P][H]"
+            }
+            # User selects multiple functional groups
+            selected_fg = st.multiselect(
+                "Select Functional Groups for Background Molecules:",
+                options=list(functional_groups.keys()),
+                default=[]
+            )
+            # Alternatively, allow user to input SMARTS patterns
+            add_custom_fg = st.checkbox("Add Custom Functional Group")
+            if add_custom_fg:
+                custom_fg_label = st.text_input("Custom Functional Group Label:")
+                custom_fg_smarts = st.text_input("Custom Functional Group SMARTS:")
+                if st.button("Add Custom Functional Group"):
+                    if custom_fg_label and custom_fg_smarts:
+                        functional_groups[custom_fg_label] = custom_fg_smarts
+                        st.success(f"Added custom functional group: {custom_fg_label}")
+                    else:
+                        st.error("Please provide both label and SMARTS pattern for the custom functional group.")
+
+            # Step 5: Filter Background Molecules based on selected functional groups
+            background_smiles = []
+            if selected_fg:
+                for fg_label in selected_fg:
+                    fg_smarts = functional_groups.get(fg_label)
+                    if fg_smarts:
+                        bg_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts)
+                        background_smiles.extend(bg_smiles)
+                background_smiles = list(set(background_smiles))  # Remove duplicates
+                st.write(f"Selected {len(background_smiles)} molecules as background based on functional groups.")
+            else:
+                background_smiles = []  # Will handle default later
+
+            # Step 6: Background molecule opacity control
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.header("Background Molecule Opacity")
+            background_opacity = st.slider('Background Molecule Opacity (Default: 0.01)', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
+
+            # Step 7: Bin size input (only for wavelength)
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.header("Binning Options")
             bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (µm)'])
 
             if bin_type == 'Wavelength (µm)':
@@ -445,23 +500,23 @@ with col1:
             else:
                 bin_size = None
 
-            # Step 5: Peak Detection Parameters
+            # Step 8: Peak Detection Parameters
             st.markdown("<hr>", unsafe_allow_html=True)
             st.header("Peak Detection Parameters")
             peak_height = st.slider("Peak Height Threshold", 0.0, 1.0, 0.3, 0.05)
             peak_prominence = st.slider("Peak Prominence", 0.0, 1.0, 0.5, 0.05)
             peak_width = st.slider("Peak Width", 1, 10, 2, 1)
 
-            # Step 6: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
+            # Step 9: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
             peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
             
             if peak_finding_enabled:
                 st.write("Configure Peak Detection Settings:")
-                # Allow users to adjust peak detection parameters
-                # These are already provided above
+                # Additional settings or descriptions can be added here if needed
                 
-                # Step 7: Functional group input for background gas labeling (in wavelength)
-                st.write("Background Gas Functional Group Labels")
+                # Step 10: Functional group input for background gas labeling (in wavelength)
+                st.markdown("<hr>", unsafe_allow_html=True)
+                st.header("Background Gas Functional Group Labels")
             
                 # Form to input functional group data based on wavelength
                 with st.form(key='functional_group_form'):
@@ -470,11 +525,11 @@ with col1:
                     add_fg = st.form_submit_button("Add Functional Group")
             
                 if add_fg:
-                    if fg_label:
+                    if fg_label and fg_wavelength:
                         st.session_state[functional_groups_key].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
                         st.success(f"Added functional group: {fg_label} at {fg_wavelength} µm")
                     else:
-                        st.error("Please provide a label for the functional group.")
+                        st.error("Please provide both label and wavelength for the functional group.")
             
                 # Display existing functional group labels and allow deletion
                 st.write("Current Functional Group Labels:")
@@ -486,20 +541,18 @@ with col1:
                         st.session_state[functional_groups_key].pop(i)
                         st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            # Step 8: Plot Sonogram Option
+            # Step 11: Plot Sonogram Option
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.header("Sonogram Plot")
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
-    # Background gas selection
+    # The molecule selection (outside the expander)
     if data is not None:
-        background_smiles = st.multiselect('Select Background Molecules:', data['SMILES'].unique())
-
-        # Background molecule opacity control
-        background_opacity = st.slider('Background Molecule Opacity (Default: 0.01)', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
-
-        # The molecule selection (outside the expander)
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.header("Foreground Molecules Selection")
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
-        # Step 9: Confirm button
+        # Step 12: Confirm button
         confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with main_col2:
@@ -546,7 +599,6 @@ with main_col2:
                     # Automatically select all background molecules if none specified
                     if not background_smiles:
                         background_smiles = data['SMILES'].unique()
-                        st.info("No background molecules specified. All background molecules will be plotted.")
 
                     # Process each molecule
                     for smiles in data['SMILES'].unique():
@@ -605,7 +657,7 @@ with main_col2:
                             )
                             # Plot background molecule
                             ax.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
-                    
+
                     # Add functional group labels for background gases based on wavelength
                     for fg in st.session_state[functional_groups_key]:
                         fg_wavelength = fg['Wavelength']
