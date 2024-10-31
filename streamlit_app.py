@@ -167,26 +167,29 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
-def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', debug=False):
+def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.3, max_peak_limit=0.7, debug=False):
     """
-    Function to bin and normalize spectra, with automatic Q-branch normalization.
-    Q-branch normalization is applied automatically by identifying the highest peak.
-
+    Function to bin and normalize spectra, with enhanced Q-branch normalization.
+    Q-branch normalization is always applied, irrespective of binning.
+    
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
     - bin_size: Size of each bin for binning. If None, no binning is performed.
     - bin_type: Type of binning ('wavelength' or 'none').
+    - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
+    - max_peak_limit: Maximum allowed intensity for peaks after normalization.
     - debug: If True, plots peak detection for debugging purposes.
-
+    
     Returns:
     - normalized_spectra: The normalized spectral data.
     - x_axis: The corresponding wavelength axis.
-    - highest_peak_idx: Index of the highest peak used for normalization.
+    - peaks: Indices of detected peaks.
+    - properties: Properties of the detected peaks.
     """
     # Define wavenumber range
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
-
+    
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
         bins = np.arange(wavelength.min(), wavelength.max() + bin_size, bin_size)
@@ -203,37 +206,65 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', debug=Fal
         binned_spectra = spectra.copy()
         x_axis = wavelength
 
-    # Automatic Q-branch normalization by identifying the highest peak
-    highest_peak_idx = np.argmax(binned_spectra)
-    max_intensity = binned_spectra[highest_peak_idx]
-
-    # Avoid division by zero
-    if max_intensity == 0:
-        normalized_spectra = binned_spectra
-    else:
-        normalized_spectra = binned_spectra / max_intensity
+    # Enhanced Q-branch handling
+    # Detect peaks to identify potential Q-branches
+    peaks, properties = find_peaks(
+        binned_spectra, 
+        height=q_branch_threshold,      # Threshold for peak height
+        prominence=0.3,                  # Prominence to filter out noise
+        width=2                          # Expected width of Q-branch
+    )
 
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
         ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
-        ax_debug.plot(x_axis[highest_peak_idx], binned_spectra[highest_peak_idx], "x", label='Highest Peak')
-        ax_debug.set_title("Automatic Q-Branch Normalization")
+        ax_debug.plot(x_axis[peaks], binned_spectra[peaks], "x", label='Detected Peaks')
+        ax_debug.set_title("Peak Detection for Q-Branch")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Intensity")
         ax_debug.legend()
         st.pyplot(fig_debug)
 
-    return normalized_spectra, x_axis, highest_peak_idx
+    # Create a copy of the binned spectra for modification
+    normalized_spectra = binned_spectra.copy()
+
+    # Cap the intensity of very large Q-branch peaks without affecting other peaks
+    for peak in peaks:
+        if normalized_spectra[peak] > max_peak_limit:
+            scaling_factor = max_peak_limit / normalized_spectra[peak]
+            normalized_spectra[peak] *= scaling_factor
+
+    # Apply local smoothing around the Q-branch
+    for peak in peaks:
+        if 0 < peak < len(normalized_spectra) - 1:
+            # Apply simple smoothing by averaging the values around the Q-branch
+            normalized_spectra[peak] = np.mean([
+                normalized_spectra[peak - 1], 
+                normalized_spectra[peak], 
+                normalized_spectra[peak + 1]
+            ])
+
+    # Further smooth the entire spectrum to minimize sharp Q-branch effects
+    smoothed_spectra = np.convolve(normalized_spectra, np.ones(5)/5, mode='same')
+
+    # Normalize the spectra to a max value of 1
+    max_value = np.max(smoothed_spectra)
+    if max_value > 0:
+        normalized_spectra = smoothed_spectra / max_value
+    else:
+        normalized_spectra = smoothed_spectra
+
+    return normalized_spectra, x_axis, peaks, properties
 
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
     """
     Filters molecules based on a SMARTS pattern.
-
+    
     Parameters:
     - smiles_list: List of SMILES strings.
     - functional_group_smarts: SMARTS pattern to filter molecules.
-
+    
     Returns:
     - filtered_smiles: List of SMILES strings that match the SMARTS pattern.
     """
@@ -255,11 +286,11 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
 def advanced_filtering_by_bond(smiles_list, bond_pattern):
     """
     Filters molecules based on specific bond patterns.
-
+    
     Parameters:
     - smiles_list: List of SMILES strings.
     - bond_pattern: Bond pattern to filter molecules (e.g., "C-H", "C=C").
-
+    
     Returns:
     - filtered_smiles: List of SMILES strings that match the bond pattern.
     """
@@ -300,11 +331,11 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
 def compute_serial_matrix(dist_mat, method="ward"):
     """
     Performs hierarchical clustering on the distance matrix and orders it.
-
+    
     Parameters:
     - dist_mat: Pairwise distance matrix.
     - method: Linkage method for hierarchical clustering.
-
+    
     Returns:
     - ordered_dist_mat: Reordered distance matrix.
     - res_order: Order of the leaves after clustering.
@@ -388,7 +419,7 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
+            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection"])
 
             with tabs[0]:
                 st.subheader("Filters")
@@ -520,19 +551,11 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            with tabs[4]:
-                st.subheader("Sonogram Plot")
-                plot_sonogram = st.checkbox('Enable Sonogram Plot for All Molecules', value=False)
-                if plot_sonogram:
-                    st.markdown("**Sonogram Plot Settings**")
-                    st.write("Configure settings for generating a comprehensive sonogram plot.")
-                    # Additional settings for sonogram can be added here if needed
+        # Foreground Molecules Selection (Clean Interface)
+        selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
-    # Foreground Molecules Selection (Clean Interface)
-    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
-
-    # Confirm button
-    confirm_button = st.button('Confirm Selection and Start Plotting')
+        # Confirm button
+        confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with main_col2:
     st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
@@ -542,14 +565,7 @@ with main_col2:
             st.error("No data available to plot.")
         else:
             with st.spinner('Generating plots, this may take some time...'):
-                # Retrieve the plot_sonogram status from the Advanced Filtration Metrics
-                with st.expander("Advanced Filtration Metrics"):
-                    # Accessing the Sonogram tab settings
-                    tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
-                    with tabs[4]:
-                        plot_sonogram = st.checkbox('Enable Sonogram Plot for All Molecules', value=False)
-
-                if plot_sonogram:
+                if plot_sonogram := st.checkbox('Plot Sonogram for All Molecules', value=False):
                     # Sonogram plotting logic
                     intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
                     if len(intensity_data) > 1:
@@ -592,11 +608,13 @@ with main_col2:
                         if spectra_row.empty:
                             continue
                         spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                        # Apply binning and automatic normalization
-                        normalized_spectra, x_axis, highest_peak_idx = bin_and_normalize_spectra(
+                        # Apply binning and normalization
+                        normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
                             spectra, 
                             bin_size=bin_size, 
                             bin_type=bin_type.lower() if bin_type != 'None' else 'none',
+                            q_branch_threshold=peak_height,  # Using peak_height as threshold
+                            max_peak_limit=0.7,
                             debug=False  # Disable debug mode for regular plotting
                         )
                         # Plot background molecule
@@ -608,11 +626,13 @@ with main_col2:
                         if spectra_row.empty:
                             continue
                         spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                        # Apply binning and automatic normalization
-                        normalized_spectra, x_axis, highest_peak_idx = bin_and_normalize_spectra(
+                        # Apply binning and normalization
+                        normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
                             spectra, 
                             bin_size=bin_size, 
                             bin_type=bin_type.lower() if bin_type != 'None' else 'none',
+                            q_branch_threshold=peak_height,  # Using peak_height as threshold
+                            max_peak_limit=0.7,
                             debug=False  # Disable debug mode for regular plotting
                         )
                         target_spectra[smiles] = normalized_spectra
