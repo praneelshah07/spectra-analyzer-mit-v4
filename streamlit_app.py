@@ -8,7 +8,7 @@ import json
 import random
 import zipfile
 import io
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, leaves_list
 import requests
@@ -16,23 +16,27 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
 
+# ---------------------------
+# Configuration and Styling
+# ---------------------------
+
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
 
-# Adding custom CSS to style the banner, title, and description
+# Adding custom CSS to style the banner, headers, and descriptions
 st.markdown("""
     <style>
     .banner {
         width: 100%;
-        background-color: #89CFF0;  /* You can change the color */
+        background-color: #89CFF0;  /* Sky Blue */
         color: white;
         padding: 20px;
         text-align: center;
-        font-size: 45px;  /* Increased font size */
+        font-size: 45px;  
         font-weight: bold;
         margin-bottom: 20px;
     }
-    .input-controls-header {
+    .header {
         padding: 10px;
         margin-bottom: 20px;
         background-color: #f0f8ff;
@@ -42,40 +46,30 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
     }
-    .graph-header {
-        padding: 10px;
-        margin-bottom: 20px;
-        background-color: #f0f8ff;
-        border: 2px solid #89CFF0;
-        border-radius: 10px;
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-    }
-    
-    .sidebar {
-        font-size: 25px;  /* Sidebar font size */
-        line-height: 1.2;  /* Improves readability */
+    .sidebar-title {
+        font-size: 25px;  
         font-weight: bold;
         text-align: center;
     }
-
     .description {
-        font-size: 14px;  /* Sidebar font size */
-        line-height: 1.4;  /* Improves readability */
+        font-size: 14px;  
+        line-height: 1.4;  
         color: #333333;
         background-color: #f0f8ff;
         padding: 10px;
         border-radius: 10px;
-        border: 1px solid #ddd;  /* Subtle border */
+        border: 1px solid #ddd;  
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
-
     </style>
     """, unsafe_allow_html=True)
 
 # Display the banner across the top
 st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow_html=True)
+
+# ---------------------------
+# User Authentication
+# ---------------------------
 
 # User authentication to enable multi-tenancy
 st.sidebar.title("User Login")
@@ -88,10 +82,9 @@ if login_button and username and password:
     user_id = str(uuid.uuid4())  # Assign a unique ID for each user session
     st.session_state['user_id'] = user_id
     st.sidebar.success(f"Logged in as {username}")
-else:
-    if 'user_id' not in st.session_state:
-        st.sidebar.error("Please log in to use the app.")
-        st.stop()
+elif 'user_id' not in st.session_state:
+    st.sidebar.error("Please log in to use the app.")
+    st.stop()
 
 user_id = st.session_state['user_id']
 
@@ -100,40 +93,46 @@ functional_groups_key = f'{user_id}_functional_groups'
 if functional_groups_key not in st.session_state:
     st.session_state[functional_groups_key] = []
 
+# ---------------------------
+# Sidebar Instructions
+# ---------------------------
+
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-        <div class="sidebar"> Welcome to the Spectra Visualization Tool. 
-        <p><b></b></p>
-        </div>
-        
-        <div class="description">  
-        
-        <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
+    <div class="sidebar-title">Welcome to the Spectra Visualization Tool</div>
+    
+    <div class="description">  
+    
+    <p><b>Here is a breakdown of all the functionalities within the app:</b></p>
 
-        <p><b>Getting Started:</b>
-        To get started, either use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Simply select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
-        
-        <p><b>SMARTS Filtering:</b> 
-        Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
-        
-        <p><b>Advanced Filtering:</b> 
-        Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset.</p> 
-        
-        <p><b>Binning Feature:</b>
-        Bin a certain amount of data within one datapoint to simplify the plot produced.</p>  
-        
-        <p><b>Peak Detection:</b>  
-        Enable this feature to automatically detect and label prominent peaks in the spectra.</p>  
-      
-        <p><b>Background Gas Labels:</b>  
-        Add functional group labels based on wavelengths for easier identification of background gases in your spectra.</p> 
-        
-        <p><b>Sonogram Plot:</b> 
-        View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</p> 
-        </div>
-    """, unsafe_allow_html=True)
+    <p><b>Getting Started:</b>
+    Use the pre-loaded dataset or upload your own CSV or ZIP file containing molecular spectra data. Select the options that best fit your analysis needs, and confirm your selection to view the corresponding plots and download them as needed.</p> 
+    
+    <p><b>SMARTS Filtering:</b> 
+    Filter molecules by their structural properties using a SMARTS pattern. Enter a SMARTS pattern to refine the dataset.</p> 
+    
+    <p><b>Advanced Filtering:</b> 
+    Search for specific functional groups such as O-H, or C-H. Enter the group to refine the dataset.</p> 
+    
+    <p><b>Binning Feature:</b>
+    Bin a certain amount of data within one datapoint to simplify the plot produced.</p>  
+    
+    <p><b>Peak Detection:</b>  
+    Enable this feature to automatically detect and label prominent peaks in the spectra.</p>  
+    
+    <p><b>Background Gas Labels:</b>  
+    Add functional group labels based on wavelengths for easier identification of background gases in your spectra.</p> 
+    
+    <p><b>Sonogram Plot:</b> 
+    View a detailed sonogram plot for all molecules in your dataset to visualize spectral differences across compounds.</p> 
+    </div>
+""", unsafe_allow_html=True)
 
-# Preloaded zip
+# ---------------------------
+# Data Loading
+# ---------------------------
+
+# Preloaded zip URL
 ZIP_URL = 'https://raw.githubusercontent.com/praneelshah07/MIT-Project/main/ASM_Vapor_Spectra.csv.zip'
 
 @st.cache_data
@@ -162,11 +161,33 @@ def load_data_from_zip(zip_url):
         st.error(f"Error extracting CSV from ZIP: {e}")
         return None
 
-# Function to bin and normalize spectra, with enhanced Q-branch normalization
-def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.5, max_peak_limit=0.7):
-    wavenumber = np.arange(4000, 500, -1)
-    wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
+# ---------------------------
+# Spectra Processing Functions
+# ---------------------------
 
+def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.5, max_peak_limit=0.7, debug=False):
+    """
+    Function to bin and normalize spectra, with enhanced Q-branch normalization.
+    Q-branch normalization is always applied, irrespective of binning.
+    
+    Parameters:
+    - spectra: Raw spectral intensity data (numpy array).
+    - bin_size: Size of each bin for binning. If None, no binning is performed.
+    - bin_type: Type of binning ('wavelength' or 'none').
+    - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
+    - max_peak_limit: Maximum allowed intensity for peaks after normalization.
+    - debug: If True, plots peak detection for debugging purposes.
+    
+    Returns:
+    - normalized_spectra: The normalized spectral data.
+    - x_axis: The corresponding wavelength axis.
+    - peaks: Indices of detected peaks.
+    - properties: Properties of the detected peaks.
+    """
+    # Define wavenumber range
+    wavenumber = np.arange(4000, 500, -1)
+    wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
+    
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
         bins = np.arange(wavelength.min(), wavelength.max() + bin_size, bin_size)
@@ -174,7 +195,10 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
         x_axis = bins[:-1] + bin_size / 2  # Center of bins
 
         # Perform binning by averaging spectra in each bin
-        binned_spectra = np.array([np.mean(spectra[digitized == i]) if np.any(digitized == i) else 0 for i in range(1, len(bins))])
+        binned_spectra = np.array([
+            np.mean(spectra[digitized == i]) if np.any(digitized == i) else 0 
+            for i in range(1, len(bins))
+        ])
     else:
         # No binning; use original spectra
         binned_spectra = spectra.copy()
@@ -182,7 +206,22 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
 
     # Enhanced Q-branch handling
     # Detect peaks to identify potential Q-branches
-    peaks, properties = find_peaks(binned_spectra, height=q_branch_threshold, prominence=0.3, width=2)
+    peaks, properties = find_peaks(
+        binned_spectra, 
+        height=q_branch_threshold,      # Threshold for peak height
+        prominence=0.5,                  # Prominence to filter out noise
+        width=1                          # Expected width of Q-branch
+    )
+
+    if debug:
+        fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
+        ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
+        ax_debug.plot(x_axis[peaks], binned_spectra[peaks], "x", label='Detected Peaks')
+        ax_debug.set_title("Peak Detection for Q-Branch")
+        ax_debug.set_xlabel("Wavelength (µm)")
+        ax_debug.set_ylabel("Intensity")
+        ax_debug.legend()
+        st.pyplot(fig_debug)
 
     # Create a copy of the binned spectra for modification
     normalized_spectra = binned_spectra.copy()
@@ -195,9 +234,13 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
 
     # Apply local smoothing around the Q-branch
     for peak in peaks:
-        if peak > 0 and peak < len(normalized_spectra) - 1:
+        if 0 < peak < len(normalized_spectra) - 1:
             # Apply simple smoothing by averaging the values around the Q-branch
-            normalized_spectra[peak] = np.mean([normalized_spectra[peak - 1], normalized_spectra[peak], normalized_spectra[peak + 1]])
+            normalized_spectra[peak] = np.mean([
+                normalized_spectra[peak - 1], 
+                normalized_spectra[peak], 
+                normalized_spectra[peak + 1]
+            ])
 
     # Further smooth the entire spectrum to minimize sharp Q-branch effects
     smoothed_spectra = np.convolve(normalized_spectra, np.ones(5)/5, mode='same')
@@ -209,112 +252,120 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     else:
         normalized_spectra = smoothed_spectra
 
-    return normalized_spectra, x_axis
+    return normalized_spectra, x_axis, peaks, properties
 
-# Function to filter molecules by functional group using SMARTS
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
+    """
+    Filters molecules based on a SMARTS pattern.
+    
+    Parameters:
+    - smiles_list: List of SMILES strings.
+    - functional_group_smarts: SMARTS pattern to filter molecules.
+    
+    Returns:
+    - filtered_smiles: List of SMILES strings that match the SMARTS pattern.
+    """
+    filtered_smiles = []
+    try:
+        fg_mol = Chem.MolFromSmarts(functional_group_smarts)
+        if fg_mol is None:
+            st.error("Invalid SMARTS pattern provided.")
+            return filtered_smiles
+        for smiles in smiles_list:
+            mol = Chem.MolFromSmiles(smiles)
+            if mol and mol.HasSubstructMatch(fg_mol):
+                filtered_smiles.append(smiles)
+    except Exception as e:
+        st.error(f"Error in SMARTS filtering: {e}")
+    return filtered_smiles
+
+@st.cache_data
+def advanced_filtering_by_bond(smiles_list, bond_pattern):
+    """
+    Filters molecules based on specific bond patterns.
+    
+    Parameters:
+    - smiles_list: List of SMILES strings.
+    - bond_pattern: Bond pattern to filter molecules (e.g., "C-H", "C=C").
+    
+    Returns:
+    - filtered_smiles: List of SMILES strings that match the bond pattern.
+    """
+    bond_patterns = {
+        "C-H": "[C][H]",
+        "C=C": "[C]=[C]",
+        "C#C": "[C]#[C]",
+        "O-H": "[O][H]",
+        "N-H": "[N][H]",
+        "C=O": "[C]=[O]",
+        "C-O": "[C][O]",
+        "C#N": "[C]#[N]",
+        "S-H": "[S][H]",
+        "N=N": "[N]=[N]",
+        "C-S": "[C][S]",
+        "C=N": "[C]=[N]",
+        "P-H": "[P][H]"
+    }
+
+    bond_smarts = bond_patterns.get(bond_pattern, bond_pattern)
+
+    try:
+        bond_mol = Chem.MolFromSmarts(bond_smarts)
+        if bond_mol is None:
+            st.error("Invalid bond pattern provided.")
+            return []
+    except Exception as e:
+        st.error(f"Error in bond pattern: {e}")
+        return []
+
     filtered_smiles = []
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
-        if mol and mol.HasSubstructMatch(Chem.MolFromSmarts(functional_group_smarts)):
+        if mol and mol.HasSubstructMatch(bond_mol):
             filtered_smiles.append(smiles)
     return filtered_smiles
 
-# Enhanced Advanced Filtering with Error Handling
-@st.cache_data
-def advanced_filtering_by_bond(smiles_list, bond_pattern):
-    filtered_smiles = []
-    
-    # Ensure the bond pattern is recognized and valid
-    if bond_pattern == "C-H":
-        bond_smarts = "[C][H]"  # SMARTS for C-H bond
-
-    elif bond_pattern == "C=C":
-        bond_smarts = "[C]=[C]"  # SMARTS for a carbon-carbon double bond
-
-    elif bond_pattern == "C#C":
-        bond_smarts = "[C]#[C]"  # SMARTS for a carbon-carbon triple bond
-    
-    elif bond_pattern == "O-H":
-        bond_smarts = "[O][H]"  # SMARTS for a hydroxyl group (O-H)
-    
-    elif bond_pattern == "N-H":
-        bond_smarts = "[N][H]"  # SMARTS for a nitrogen-hydrogen bond (amine)
-    
-    elif bond_pattern == "C=O":
-        bond_smarts = "[C]=[O]"  # SMARTS for a carbonyl group (C=O)
-    
-    elif bond_pattern == "C-O":
-        bond_smarts = "[C][O]"  # SMARTS for a carbon-oxygen single bond (ether, alcohol)
-    
-    elif bond_pattern == "C#N":
-        bond_smarts = "[C]#[N]"  # SMARTS for a nitrile group (C≡N)
-    
-    elif bond_pattern == "S-H":
-        bond_smarts = "[S][H]"  # SMARTS for a sulfur-hydrogen bond (thiol)
-    
-    elif bond_pattern == "N=N":
-        bond_smarts = "[N]=[N]"  # SMARTS for an azo group (N=N)
-    
-    elif bond_pattern == "C-S":
-        bond_smarts = "[C][S]"  # SMARTS for a carbon-sulfur single bond (thioether)
-    
-    elif bond_pattern == "C=N":
-        bond_smarts = "[C]=[N]"  # SMARTS for an imine group (C=N)
-    
-    elif bond_pattern == "P-H":
-        bond_smarts = "[P][H]"  # SMARTS for a phosphorus-hydrogen bond (phosphine)
-
-    else:
-        try:
-            bond_smarts = bond_pattern  # Use the input directly for other bond patterns like C=C or C#C
-            if not Chem.MolFromSmarts(bond_smarts):
-                raise ValueError(f"Invalid SMARTS pattern: {bond_smarts}")
-        except Exception as e:
-            st.error(f"Error with SMARTS pattern: {e}")
-            return filtered_smiles  # Return an empty list in case of error
-    
-    for smiles in smiles_list:
-        mol = Chem.MolFromSmiles(smiles)
-        
-        if mol:
-            mol_with_h = Chem.AddHs(mol)  # Add explicit hydrogens
-            
-            if mol_with_h and Chem.MolFromSmarts(bond_smarts):
-                # Now check for substructure matches
-                if mol_with_h.HasSubstructMatch(Chem.MolFromSmarts(bond_smarts)):
-                    filtered_smiles.append(smiles)
-        else:
-            st.warning(f"Could not process SMILES: {smiles}")
-    
-    return filtered_smiles
-
-# Compute the distance matrix
 def compute_serial_matrix(dist_mat, method="ward"):
+    """
+    Performs hierarchical clustering on the distance matrix and orders it.
+    
+    Parameters:
+    - dist_mat: Pairwise distance matrix.
+    - method: Linkage method for hierarchical clustering.
+    
+    Returns:
+    - ordered_dist_mat: Reordered distance matrix.
+    - res_order: Order of the leaves after clustering.
+    - res_linkage: Linkage matrix from clustering.
+    """
     if dist_mat.shape[0] < 2:
         raise ValueError("Not enough data for clustering. Ensure at least two molecules are present.")
     
     res_linkage = linkage(dist_mat, method=method)
-    res_order = leaves_list(res_linkage)  # This will give the correct order of leaves
+    res_order = leaves_list(res_linkage)  # Correct order of leaves
 
     # Reorder distance matrix based on hierarchical clustering leaves
     ordered_dist_mat = dist_mat[res_order, :][:, res_order]
     return ordered_dist_mat, res_order, res_linkage
 
+# ---------------------------
+# Streamlit Layout
+# ---------------------------
+
 # Set up two-column layout below the banner
 col1, main_col2 = st.columns([1, 2])
 
 with col1:
-    st.markdown('<div class="input-controls-header">Input Controls</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header">Input Controls</div>', unsafe_allow_html=True)
 
     # Load preloaded data from ZIP
     data = load_data_from_zip(ZIP_URL)
     if data is not None:
-        st.write("Using preloaded data from GitHub zip file.")
+        st.success("Using preloaded data from GitHub zip file.")
 
     # File uploader for custom datasets
-    uploaded_file = st.file_uploader("If you would like to enter another dataset, insert it here", type=["csv", "zip"])
+    uploaded_file = st.file_uploader("Upload your dataset (CSV or ZIP):", type=["csv", "zip"])
 
     # Load new dataset if uploaded
     if uploaded_file is not None:
@@ -328,200 +379,255 @@ with col1:
                         break
                 if csv_file:
                     with z.open(csv_file) as f:
-                        data = pd.read_csv(f, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])
-                    st.write(f"Extracted and reading: {csv_file}")
+                        try:
+                            data = pd.read_csv(f, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])
+                            st.success(f"Extracted and loaded: {csv_file}")
+                        except Exception as e:
+                            st.error(f"Error reading CSV from ZIP: {e}")
                 else:
                     st.error("No CSV file found inside the uploaded ZIP.")
         
         elif uploaded_file.name.endswith('.csv'):
             try:
                 data = pd.read_csv(uploaded_file, usecols=["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)", "Raw_Spectra_Intensity"])
-                st.write("Using uploaded CSV file data.")
+                st.success("Loaded uploaded CSV file successfully.")
             except pd.errors.EmptyDataError:
                 st.error("Uploaded CSV is empty.")
             except KeyError:
-                st.error("Uploaded file is missing required columns.")
+                st.error("Uploaded CSV is missing required columns.")
+            except Exception as e:
+                st.error(f"Error reading uploaded CSV: {e}")
 
     # Display dataset preview
     if data is not None:
-        data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
-        data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
-        
+        try:
+            # Convert Raw_Spectra_Intensity from JSON strings to numpy arrays
+            data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
+            data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
+        except Exception as e:
+            st.error(f"Error processing Raw_Spectra_Intensity: {e}")
+            st.stop()
+
         columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
         st.write(data[columns_to_display])
-   
-        # Ensure filtered_smiles is always initialized outside the expander
-        filtered_smiles = data['SMILES'].unique()  # Initialize with all available SMILES
-        
-        # UI Rearrangement with expander for advanced features
+
+        # Initialize filtered_smiles with all unique SMILES
+        filtered_smiles = data['SMILES'].unique()
+
+        # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Step 1: Filter Selection
             use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
-            use_advanced_filter = st.checkbox('Apply Advanced Filtering')
-        
+            use_advanced_filter = st.checkbox('Apply Advanced Bond Filtering')
+
             # Step 2: Apply SMARTS filtering if enabled
             if use_smarts_filter:
                 functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
                 if functional_group_smarts:
-                    try:
-                        filtered_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
-                        st.write(f"Filtered dataset to {len(filtered_smiles)} molecules using SMARTS pattern.")
-                    except Exception as e:
-                        st.error(f"Invalid SMARTS pattern: {e}")
-        
-            # Step 2 (Advanced): Apply advanced filtering if selected
+                    filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
+                    st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
+                    filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
+
+            # Step 3: Apply advanced filtering if selected
             if use_advanced_filter:
-                bond_input = st.text_input("Enter a bond type (e.g., C-C, C#C, C-H):", "")
-                if bond_input:
-                    filtered_smiles = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
-                    st.write(f"Filtered dataset to {len(filtered_smiles)} molecules with bond pattern '{bond_input}'.")
-        
+                bond_input = st.selectbox("Select a bond type to filter molecules:", 
+                                          ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
+                                           "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"])
+                if bond_input and bond_input != "None":
+                    filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
+                    st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
+                    filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
+
             # Step 4: Bin size input (only for wavelength)
-            bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (in microns)'])
-        
-            # Removed the restrictive range for bin sizes
-            bin_size = st.number_input('Enter bin size (resolution) in microns:', value=0.1)
-        
-            # Step 5: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
+            bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (µm)'])
+
+            if bin_type == 'Wavelength (µm)':
+                bin_size = st.number_input('Enter bin size (µm):', min_value=0.01, max_value=5.0, value=0.1, step=0.01)
+            else:
+                bin_size = None
+
+            # Step 5: Peak Detection Parameters
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.header("Peak Detection Parameters")
+            peak_height = st.slider("Peak Height Threshold", 0.0, 1.0, 0.3, 0.05)
+            peak_prominence = st.slider("Peak Prominence", 0.0, 1.0, 0.5, 0.05)
+            peak_width = st.slider("Peak Width", 1, 10, 2, 1)
+
+            # Step 6: Enable Peak Finding and Conditional Dropdown for Peak Detection and Labels
             peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
             
             if peak_finding_enabled:
-                # Remove the nested expander, just show this section without nesting
-                st.write("Peak Detection and Background Gas Labels")
-                num_peaks = st.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
-            
+                st.write("Configure Peak Detection Settings:")
+                # Allow users to adjust peak detection parameters
+                # These are already provided above
+                
                 # Step 7: Functional group input for background gas labeling (in wavelength)
                 st.write("Background Gas Functional Group Labels")
             
                 # Form to input functional group data based on wavelength
                 with st.form(key='functional_group_form'):
                     fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-                    fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=12.4)  # Wavelength input
+                    fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=15.0, step=0.1)
                     add_fg = st.form_submit_button("Add Functional Group")
             
                 if add_fg:
-                    st.session_state[functional_groups_key].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+                    if fg_label:
+                        st.session_state[functional_groups_key].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+                        st.success(f"Added functional group: {fg_label} at {fg_wavelength} µm")
+                    else:
+                        st.error("Please provide a label for the functional group.")
             
                 # Display existing functional group labels and allow deletion
                 st.write("Current Functional Group Labels:")
                 for i, fg in enumerate(st.session_state[functional_groups_key]):
-                    label_col1, label_col2, delete_col = st.columns([2, 2, 1])  # Rename the columns here to avoid naming conflicts
-                    label_col1.write(f"Functional Group: {fg['Functional Group']}")
-                    label_col2.write(f"Wavelength: {fg['Wavelength']} µm")
+                    label_col1, label_col2, delete_col = st.columns([2, 2, 1])
+                    label_col1.write(f"**Functional Group:** {fg['Functional Group']}")
+                    label_col2.write(f"**Wavelength:** {fg['Wavelength']} µm")
                     if delete_col.button(f"Delete", key=f"delete_fg_{i}"):
                         st.session_state[functional_groups_key].pop(i)
+                        st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            # Step 6: Plot Sonogram (Outside of Expander)
+            # Step 8: Plot Sonogram Option
             plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
-        
+
     # Background gas selection
-    background_smiles = st.multiselect('Select Background Molecules:', data['SMILES'].unique())
-
-    # Background molecule opacity control
-    background_opacity = st.slider('Background Molecule Opacity (Default: 0.01)', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
-
-    # The molecule selection (outside the expander)
-    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
-
-    # Step 8: Confirm button
-    confirm_button = st.button('Confirm Selection and Start Plotting')
+    if data is not None:
+        background_smiles = st.multiselect('Select Background Molecules:', data['SMILES'].unique())
+    
+        # Background molecule opacity control
+        background_opacity = st.slider('Background Molecule Opacity (Default: 0.01)', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
+    
+        # The molecule selection (outside the expander)
+        selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
+    
+        # Step 9: Confirm button
+        confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with main_col2:
-    st.markdown('<div class="graph-header">Graph</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
 
     if confirm_button:
-        with st.spinner('Generating plots, this may take some time...'):
-            if plot_sonogram:
-                # Sonogram plotting logic remains unchanged
-                # ...
-                pass  # Existing sonogram code
-            else:
-                top_peaks = []
-                fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
-                wavenumber = np.arange(4000, 500, -1)
-                wavelength = 10000 / wavenumber
+        if data is None:
+            st.error("No data available to plot.")
+        else:
+            with st.spinner('Generating plots, this may take some time...'):
+                if plot_sonogram:
+                    # Sonogram plotting logic
+                    intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
+                    if len(intensity_data) > 1:
+                        try:
+                            dist_mat = squareform(pdist(intensity_data))
+                            ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
 
-                color_options = ['r', 'g', 'b', 'c', 'm', 'y']
-                random.shuffle(color_options)
+                            fig, ax = plt.subplots(figsize=(12, 12))
+                            ax.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[4000, 500, len(ordered_dist_mat), 0], cmap='viridis')
+                            ax.set_xlabel("Wavenumber (cm⁻¹)")
+                            ax.set_ylabel("Molecules")
+                            ax.set_title("Sonogram Plot")
 
-                target_spectra = {}
-                for smiles, spectra in data[['SMILES', 'Raw_Spectra_Intensity']].values:
-                    if smiles in selected_smiles:
-                        # Apply binning if selected
-                        if bin_type.lower() != 'none' and bin_type.lower() == 'wavelength':
-                            spectra, x_axis = bin_and_normalize_spectra(
-                                spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5
+                            st.pyplot(fig)
+                            plt.close(fig)
+
+                            # Download button for the sonogram
+                            buf = io.BytesIO()
+                            fig.savefig(buf, format='png')
+                            buf.seek(0)
+                            st.download_button(label="Download Sonogram as PNG", data=buf, file_name="sonogram.png", mime="image/png")
+                        except Exception as e:
+                            st.error(f"Error generating sonogram: {e}")
+                    else:
+                        st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
+                else:
+                    # Spectra plotting logic
+                    fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
+                    color_options = ['r', 'g', 'b', 'c', 'm', 'y']
+                    random.shuffle(color_options)
+                    target_spectra = {}
+
+                    # Process each selected molecule
+                    for smiles in data['SMILES'].unique():
+                        spectra_row = data[data['SMILES'] == smiles]
+                        if spectra_row.empty:
+                            continue
+                        spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                        if smiles in selected_smiles:
+                            # Apply binning and normalization
+                            normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
+                                spectra, 
+                                bin_size=bin_size, 
+                                bin_type=bin_type.lower() if bin_type != 'None' else 'none',
+                                q_branch_threshold=peak_height,  # Using peak_height as threshold
+                                max_peak_limit=0.7,
+                                debug=False  # Disable debug mode for regular plotting
                             )
-                        else:
-                            # No binning; apply Q-branch normalization directly
-                            spectra, x_axis = bin_and_normalize_spectra(
-                                spectra, bin_size=None, bin_type='none', q_branch_threshold=0.5
+                            target_spectra[smiles] = normalized_spectra
+
+                            # Plot foreground molecule
+                            ax.fill_between(x_axis, 0, normalized_spectra, color=color_options[len(target_spectra) % len(color_options)], alpha=0.5, label=smiles)
+
+                            if peak_finding_enabled:
+                                # Detect peaks with user-defined parameters
+                                detected_peaks, detected_properties = find_peaks(
+                                    normalized_spectra, 
+                                    height=peak_height, 
+                                    prominence=peak_prominence, 
+                                    width=peak_width
+                                )
+
+                                # Sort the peaks by their prominence and select the top `num_peaks`
+                                if len(detected_peaks) > 0:
+                                    prominences = detected_properties['prominences']
+                                    peaks_with_prominences = sorted(zip(detected_peaks, prominences), key=lambda x: x[1], reverse=True)
+                                    num_peaks = st.sidebar.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
+                                    top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
+
+                                    # Label the top peaks
+                                    for peak in top_peaks:
+                                        peak_wavelength = x_axis[peak]
+                                        peak_intensity = normalized_spectra[peak]
+                                        ax.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
+                                                fontsize=10, ha='center', color=color_options[len(target_spectra) % len(color_options)])
+                        elif smiles in background_smiles:
+                            # Apply binning and normalization for background molecules
+                            normalized_spectra, x_axis, peaks, properties = bin_and_normalize_spectra(
+                                spectra, 
+                                bin_size=bin_size, 
+                                bin_type=bin_type.lower() if bin_type != 'None' else 'none',
+                                q_branch_threshold=peak_height,  # Using peak_height as threshold
+                                max_peak_limit=0.7,
+                                debug=False
                             )
-                        target_spectra[smiles] = spectra
-                    elif smiles in background_smiles or (not background_smiles and smiles in filtered_smiles):
-                        if bin_type.lower() != 'none' and bin_type.lower() == 'wavelength':
-                            spectra, x_axis = bin_and_normalize_spectra(
-                                spectra, bin_size, bin_type.lower(), q_branch_threshold=0.5
-                            )
-                        else:
-                            spectra, x_axis = bin_and_normalize_spectra(
-                                spectra, bin_size=None, bin_type='none', q_branch_threshold=0.5
-                            )
-                        ax.fill_between(x_axis, 0, spectra, color="k", alpha=background_opacity)
-               
-                for i, smiles in enumerate(target_spectra):
-                    spectra = target_spectra[smiles]
-                    ax.fill_between(x_axis, 0, spectra, color=color_options[i % len(color_options)], alpha=0.5, label=f"{smiles}")
-
-                    if peak_finding_enabled:
-                        # Detect peaks and retrieve peak properties like prominence
-                        peaks, properties = find_peaks(spectra, height=0.05, prominence=0.1)
-                        
-                        # Sort the peaks by their prominence and select the top `num_peaks`
-                        if len(peaks) > 0:
-                            prominences = properties['prominences']
-                            # Zip peaks with their corresponding prominences, then sort by prominence
-                            peaks_with_prominences = sorted(zip(peaks, prominences), key=lambda x: x[1], reverse=True)
-                            # Extract the top `num_peaks` most prominent peaks
-                            top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
-                            # Now label the top peaks
-                            for peak in top_peaks:
-                                peak_wavelength = x_axis[peak]
-                                peak_intensity = spectra[peak]
-                                 # Label the peaks with wavelength
-                                ax.text(peak_wavelength, peak_intensity + 0.05, f'{round(peak_wavelength, 1)}', 
-                                        fontsize=10, ha='center', color=color_options[i % len(color_options)])
-                                                                     
-                # Add functional group labels for background gases based on wavelength
-                for fg in st.session_state[functional_groups_key]:
-                    fg_wavelength = fg['Wavelength']
-                    fg_label = fg['Functional Group']
-                    ax.axvline(fg_wavelength, color='grey', linestyle='--')
-                    ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
-
-                # Customize plot
-                ax.set_xlim([x_axis.min(), x_axis.max()])
-
-                major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
-                ax.set_xticks(major_ticks)
-
-                # Number of label matches
-                ax.set_xticklabels([str(tick) for tick in major_ticks])
-
-                ax.tick_params(direction="in",
-                    labelbottom=True, labeltop=False, labelleft=True, labelright=False,
-                    bottom=True, top=True, left=True, right=True)
-
-                ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
-
-                if selected_smiles:
-                    ax.legend()
-
-                st.pyplot(fig)
-
-                # Download button for the spectra plot
-                buf = io.BytesIO()
-                fig.savefig(buf, format='png')
-                buf.seek(0)
-                st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
+                            # Plot background molecule
+                            ax.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
+                    
+                    # Add functional group labels for background gases based on wavelength
+                    for fg in st.session_state[functional_groups_key]:
+                        fg_wavelength = fg['Wavelength']
+                        fg_label = fg['Functional Group']
+                        ax.axvline(fg_wavelength, color='grey', linestyle='--')
+                        ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
+    
+                    # Customize plot
+                    ax.set_xlim([x_axis.min(), x_axis.max()])
+    
+                    major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
+                    ax.set_xticks(major_ticks)
+                    ax.set_xticklabels([str(tick) for tick in major_ticks])
+    
+                    ax.tick_params(direction="in",
+                        labelbottom=True, labeltop=False, labelleft=True, labelright=False,
+                        bottom=True, top=True, left=True, right=True)
+    
+                    ax.set_xlabel("Wavelength (µm)", fontsize=22)
+                    ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+    
+                    if selected_smiles:
+                        ax.legend()
+    
+                    st.pyplot(fig)
+    
+                    # Download button for the spectra plot
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png')
+                    buf.seek(0)
+                    st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
