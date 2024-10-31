@@ -163,7 +163,7 @@ def load_data_from_zip(zip_url):
         return None
 
 # Function to bin and normalize spectra, with enhanced Q-branch normalization
-def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=0.7):
+def bin_and_normalize_spectra(spectra, bin_size, bin_type='wavelength', q_branch_threshold=None, max_peak_limit=1):
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength
 
