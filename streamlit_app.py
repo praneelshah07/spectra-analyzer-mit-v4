@@ -71,17 +71,47 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 # User Authentication
 # ---------------------------
 
+# Initialize session state variables
+if 'user_id' not in st.session_state:
+    st.session_state['user_id'] = None
+
+if 'functional_groups' not in st.session_state:
+    st.session_state['functional_groups'] = []
+
+if 'functional_groups_dict' not in st.session_state:
+    st.session_state['functional_groups_dict'] = {
+        "C-H": "[C][H]",
+        "O-H": "[O][H]",
+        "N-H": "[N][H]",
+        "C=O": "[C]=[O]",
+        "C-O": "[C][O]",
+        "C#N": "[C]#[N]",
+        "S-H": "[S][H]",
+        "N=N": "[N]=[N]",
+        "C-S": "[C][S]",
+        "C=N": "[C]=[N]",
+        "P-H": "[P][H]"
+    }
+
+if 'plot_sonogram' not in st.session_state:
+    st.session_state['plot_sonogram'] = False
+
+if 'peak_finding_enabled' not in st.session_state:
+    st.session_state['peak_finding_enabled'] = False
+
+if 'num_peaks' not in st.session_state:
+    st.session_state['num_peaks'] = 5
+
 # Simplified authentication: Only username required
 st.sidebar.title("User Login")
 username = st.sidebar.text_input("Username")
 login_button = st.sidebar.button("Login")
 
-# Simulated authentication (for demo purposes)
 if login_button and username:
     user_id = str(uuid.uuid4())  # Assign a unique ID for each user session
     st.session_state['user_id'] = user_id
     st.sidebar.success(f"Logged in as {username}")
-elif 'user_id' not in st.session_state:
+elif st.session_state['user_id'] is None:
     st.sidebar.error("Please enter a username and click 'Login' to use the app.")
     st.stop()
 
@@ -226,6 +256,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
         ax_debug.set_ylabel("Intensity")
         ax_debug.legend()
         st.pyplot(fig_debug)
+        plt.close(fig_debug)
 
     return normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity
 
@@ -376,15 +407,31 @@ with col1:
     # Display dataset preview
     if data is not None:
         try:
-            # Convert Raw_Spectra_Intensity from JSON strings to numpy arrays
+            # Ensure 'Raw_Spectra_Intensity' is a string before loading JSON
+            data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].astype(str)
             data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(json.loads)
-            data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(np.array)
+            data['Raw_Spectra_Intensity'] = data['Raw_Spectra_Intensity'].apply(lambda x: np.array(x) if isinstance(x, list) else np.array([]))
+            
+            # Check for empty arrays
+            empty_spectra = data['Raw_Spectra_Intensity'].apply(lambda x: len(x) == 0)
+            if empty_spectra.any():
+                st.warning(f"{empty_spectra.sum()} entries have empty 'Raw_Spectra_Intensity'. They will be excluded.")
+                data = data[~empty_spectra]
+        except json.JSONDecodeError as e:
+            st.error(f"JSON decoding error in 'Raw_Spectra_Intensity': {e}")
+            st.stop()
         except Exception as e:
-            st.error(f"Error processing Raw_Spectra_Intensity: {e}")
+            st.error(f"Error processing 'Raw_Spectra_Intensity': {e}")
             st.stop()
 
-        columns_to_display = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
-        st.write(data[columns_to_display])
+        # Validate required columns
+        required_columns = ["Formula", "IUPAC chemical name", "SMILES", "Molecular Weight", "Boiling Point (oC)"]
+        missing_columns = [col for col in required_columns if col not in data.columns]
+        if missing_columns:
+            st.error(f"The following required columns are missing from the dataset: {', '.join(missing_columns)}")
+            st.stop()
+
+        st.write(data[required_columns])
 
         # Initialize filtered_smiles with all unique SMILES
         filtered_smiles = data['SMILES'].unique()
@@ -422,26 +469,15 @@ with col1:
 
                 # Functional Groups for Background Selection
                 st.markdown("**Background Functional Groups**")
-                # Predefined list of common functional groups
-                functional_groups = {
-                    "C-H": "[C][H]",
-                    "O-H": "[O][H]",
-                    "N-H": "[N][H]",
-                    "C=O": "[C]=[O]",
-                    "C-O": "[C][O]",
-                    "C#N": "[C]#[N]",
-                    "S-H": "[S][H]",
-                    "N=N": "[N]=[N]",
-                    "C-S": "[C][S]",
-                    "C=N": "[C]=[N]",
-                    "P-H": "[P][H]"
-                }
+                functional_groups = st.session_state['functional_groups_dict']
+
                 # User selects multiple functional groups
                 selected_fg = st.multiselect(
                     "Select Functional Groups for Background Molecules:",
                     options=list(functional_groups.keys()),
                     default=[]
                 )
+
                 # Alternatively, allow user to input SMARTS patterns
                 add_custom_fg = st.checkbox("Add Custom Functional Group")
                 if add_custom_fg:
@@ -452,7 +488,7 @@ with col1:
                         custom_fg_smarts = st.text_input("Custom Functional Group SMARTS:", key='custom_fg_smarts')
                     if st.button("Add Custom Functional Group"):
                         if custom_fg_label and custom_fg_smarts:
-                            functional_groups[custom_fg_label] = custom_fg_smarts
+                            st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
                             st.success(f"Added custom functional group: {custom_fg_label}")
                         else:
                             st.error("Please provide both label and SMARTS pattern for the custom functional group.")
@@ -476,9 +512,9 @@ with col1:
 
             with tabs[2]:
                 st.subheader("Binning Options")
-                bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength (µm)'])
+                bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength'])
 
-                if bin_type == 'Wavelength (µm)':
+                if bin_type == 'Wavelength':
                     bin_size = st.number_input('Enter bin size (µm):', min_value=0.01, max_value=5.0, value=0.1, step=0.01)
                 else:
                     bin_size = None
@@ -492,9 +528,9 @@ with col1:
                 peak_width = st.slider("Peak Width", 1, 10, 2, 1)
 
                 # Enable Peak Finding and Labeling
-                peak_finding_enabled = st.checkbox('Enable Peak Finding and Labeling', value=False)
+                st.session_state['peak_finding_enabled'] = st.checkbox('Enable Peak Finding and Labeling', value=False)
                 
-                if peak_finding_enabled:
+                if st.session_state['peak_finding_enabled']:
                     st.markdown("**Background Gas Functional Group Labels**")
                     
                     # Form to input functional group data based on wavelength
@@ -528,7 +564,7 @@ with col1:
                 st.subheader("Sonogram")
 
                 # Plot Sonogram Checkbox
-                plot_sonogram = st.checkbox('Plot Sonogram for All Molecules', value=False)
+                st.session_state['plot_sonogram'] = st.checkbox('Plot Sonogram for All Molecules', value=False)
 
         # Foreground Molecules Selection (Clean Interface)
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
@@ -543,173 +579,140 @@ with main_col2:
         if data is None:
             st.error("No data available to plot.")
         else:
-            with st.spinner('Generating plots, this may take some time...'):
-                # Access the 'plot_sonogram' variable from the Sonogram tab
-                if 'plot_sonogram' in locals():
-                    pass  # 'plot_sonogram' is defined below
-                else:
-                    # Attempt to retrieve 'plot_sonogram' from session state
-                    plot_sonogram = False
-                    if 'plot_sonogram' in st.session_state:
-                        plot_sonogram = st.session_state['plot_sonogram']
+            if selected_smiles.size == 0 and not st.session_state['plot_sonogram']:
+                st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
+            else:
+                with st.spinner('Generating plots, this may take some time...'):
+                    if st.session_state['plot_sonogram']:
+                        # Sonogram plotting logic
+                        intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
+                        if len(intensity_data) > 1:
+                            try:
+                                dist_mat = squareform(pdist(intensity_data))
+                                ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
 
-                # Retrieve 'plot_sonogram' from the Sonogram tab
-                # Since 'plot_sonogram' is defined within the tabs, it's accessible here
-                # Alternatively, use session state for more reliability
-                plot_sonogram = False
-                if 'plot_sonogram' in st.session_state:
-                    plot_sonogram = st.session_state['plot_sonogram']
-                else:
-                    # Initialize 'plot_sonogram' if not set
-                    plot_sonogram = False
+                                fig_sono, ax_sono = plt.subplots(figsize=(12, 12))
+                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[4000, 500, len(ordered_dist_mat), 0], cmap='viridis')
+                                ax_sono.set_xlabel("Wavenumber (cm⁻¹)")
+                                ax_sono.set_ylabel("Molecules")
+                                ax_sono.set_title("Sonogram Plot")
 
-                # Alternatively, directly retrieve 'plot_sonogram' if defined
-                # Note: This approach assumes that the checkbox has been interacted with
-                # Otherwise, it defaults to False
-                # plot_sonogram = st.session_state.get('plot_sonogram', False)
+                                st.pyplot(fig_sono)
+                                plt.close(fig_sono)
 
-                # Check if 'plot_sonogram' checkbox is checked
-                # Retrieve 'plot_sonogram' from the Sonogram tab
-                # Streamlit runs scripts top to bottom, so 'plot_sonogram' should be defined
-                plot_sonogram = False
-                if 'plot_sonogram' in locals():
-                    plot_sonogram = plot_sonogram
-                elif 'plot_sonogram' in st.session_state:
-                    plot_sonogram = st.session_state['plot_sonogram']
-                else:
-                    plot_sonogram = False
+                                # Download button for the sonogram
+                                buf_sono = io.BytesIO()
+                                fig_sono.savefig(buf_sono, format='png')
+                                buf_sono.seek(0)
+                                st.download_button(label="Download Sonogram as PNG", data=buf_sono, file_name="sonogram.png", mime="image/png")
+                            except Exception as e:
+                                st.error(f"Error generating sonogram: {e}")
+                        else:
+                            st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
 
-                # However, to ensure reliability, better to pass the variable properly
-                # For simplicity, redefine 'plot_sonogram' outside the tabs using session state
-                plot_sonogram = st.session_state.get('plot_sonogram', False)
-
-                if plot_sonogram:
-                    # Sonogram plotting logic
-                    intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
-                    if len(intensity_data) > 1:
-                        try:
-                            dist_mat = squareform(pdist(intensity_data))
-                            ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
-
-                            fig, ax = plt.subplots(figsize=(12, 12))
-                            ax.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[4000, 500, len(ordered_dist_mat), 0], cmap='viridis')
-                            ax.set_xlabel("Wavenumber (cm⁻¹)")
-                            ax.set_ylabel("Molecules")
-                            ax.set_title("Sonogram Plot")
-
-                            st.pyplot(fig)
-                            plt.close(fig)
-
-                            # Download button for the sonogram
-                            buf = io.BytesIO()
-                            fig.savefig(buf, format='png')
-                            buf.seek(0)
-                            st.download_button(label="Download Sonogram as PNG", data=buf, file_name="sonogram.png", mime="image/png")
-                        except Exception as e:
-                            st.error(f"Error generating sonogram: {e}")
-                    else:
-                        st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
-                else:
                     # Spectra plotting logic
-                    fig, ax = plt.subplots(figsize=(16, 6.5), dpi=100)
-                    color_options = ['r', 'g', 'b', 'c', 'm', 'y']
-                    random.shuffle(color_options)
-                    target_spectra = {}
+                    if selected_smiles.size > 0:
+                        fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
+                        color_options = ['r', 'g', 'b', 'c', 'm', 'y']
+                        random.shuffle(color_options)
+                        target_spectra = {}
 
-                    # Automatically select all background molecules if none specified
-                    if not background_smiles:
-                        background_smiles = data['SMILES'].unique()
+                        # Automatically select all background molecules if none specified
+                        if not background_smiles:
+                            background_smiles = data['SMILES'].unique()
 
-                    # First plot background molecules
-                    for smiles in background_smiles:
-                        spectra_row = data[data['SMILES'] == smiles]
-                        if spectra_row.empty:
-                            continue
-                        spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                        # Apply binning and normalization
-                        normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
-                            spectra, 
-                            bin_size=bin_size, 
-                            bin_type=bin_type.lower() if bin_type != 'None' else 'none',
-                            q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                            max_peak_limit=0.7,
-                            debug=False  # Disable debug mode for regular plotting
-                        )
-                        # Plot background molecule
-                        ax.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
-
-                    # Then plot foreground molecules to ensure they are on top
-                    for smiles in selected_smiles:
-                        spectra_row = data[data['SMILES'] == smiles]
-                        if spectra_row.empty:
-                            continue
-                        spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                        # Apply binning and normalization
-                        normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
-                            spectra, 
-                            bin_size=bin_size, 
-                            bin_type=bin_type.lower() if bin_type != 'None' else 'none',
-                            q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                            max_peak_limit=0.7,
-                            debug=False  # Disable debug mode for regular plotting
-                        )
-                        target_spectra[smiles] = normalized_spectra
-
-                        # Plot foreground molecule
-                        ax.fill_between(x_axis, 0, normalized_spectra, color=color_options[len(target_spectra) % len(color_options)], alpha=0.7, label=smiles)
-
-                        if peak_finding_enabled:
-                            # Detect peaks with user-defined parameters
-                            detected_peaks, detected_properties = find_peaks(
-                                normalized_spectra, 
-                                height=peak_height, 
-                                prominence=peak_prominence, 
-                                width=peak_width
+                        # First plot background molecules
+                        for smiles in background_smiles:
+                            spectra_row = data[data['SMILES'] == smiles]
+                            if spectra_row.empty:
+                                continue
+                            spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                            # Apply binning and normalization
+                            normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
+                                spectra, 
+                                bin_size=bin_size, 
+                                bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
+                                q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
+                                max_peak_limit=0.7,
+                                debug=False  # Disable debug mode for regular plotting
                             )
+                            # Plot background molecule
+                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
 
-                            # Sort the peaks by their prominence and select the top `num_peaks`
-                            if len(detected_peaks) > 0:
-                                prominences = detected_properties['prominences']
-                                peaks_with_prominences = sorted(zip(detected_peaks, prominences), key=lambda x: x[1], reverse=True)
-                                num_peaks = st.sidebar.slider('Number of Prominent Peaks to Detect', min_value=1, max_value=10, value=5)
-                                top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
+                        # Then plot foreground molecules to ensure they are on top
+                        for idx, smiles in enumerate(selected_smiles):
+                            spectra_row = data[data['SMILES'] == smiles]
+                            if spectra_row.empty:
+                                continue
+                            spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                            # Apply binning and normalization
+                            normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
+                                spectra, 
+                                bin_size=bin_size, 
+                                bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
+                                q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
+                                max_peak_limit=0.7,
+                                debug=False  # Disable debug mode for regular plotting
+                            )
+                            target_spectra[smiles] = normalized_spectra
 
-                                # Label the top peaks
-                                for peak in top_peaks:
-                                    peak_wavelength = x_axis[peak]
-                                    peak_intensity = normalized_spectra[peak]
-                                    # Label the peaks with wavelength
-                                    ax.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
-                                            fontsize=10, ha='center', color=color_options[len(target_spectra) % len(color_options)])
+                            # Plot foreground molecule
+                            color = color_options[idx % len(color_options)]
+                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
 
-                    # Add functional group labels for background gases based on wavelength
-                    for fg in st.session_state[functional_groups_key]:
-                        fg_wavelength = fg['Wavelength']
-                        fg_label = fg['Functional Group']
-                        ax.axvline(fg_wavelength, color='grey', linestyle='--')
-                        ax.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
+                            if st.session_state['peak_finding_enabled']:
+                                # Detect peaks with user-defined parameters
+                                detected_peaks, detected_properties = find_peaks(
+                                    normalized_spectra, 
+                                    height=peak_height, 
+                                    prominence=peak_prominence, 
+                                    width=peak_width
+                                )
 
-                    # Customize plot
-                    ax.set_xlim([x_axis.min(), x_axis.max()])
+                                # Sort the peaks by their prominence and select the top `num_peaks`
+                                if len(detected_peaks) > 0:
+                                    prominences = detected_properties['prominences']
+                                    peaks_with_prominences = sorted(zip(detected_peaks, prominences), key=lambda x: x[1], reverse=True)
+                                    num_peaks = st.session_state['num_peaks']
+                                    top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
 
-                    major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
-                    ax.set_xticks(major_ticks)
-                    ax.set_xticklabels([str(tick) for tick in major_ticks])
+                                    # Label the top peaks
+                                    for peak in top_peaks:
+                                        peak_wavelength = x_axis[peak]
+                                        peak_intensity = normalized_spectra[peak]
+                                        # Label the peaks with wavelength
+                                        ax_spec.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
+                                                fontsize=10, ha='center', color=color)
 
-                    ax.tick_params(direction="in",
-                        labelbottom=True, labeltop=False, labelleft=True, labelright=False,
-                        bottom=True, top=True, left=True, right=True)
+                        # Add functional group labels for background gases based on wavelength
+                        for fg in st.session_state[functional_groups_key]:
+                            fg_wavelength = fg['Wavelength']
+                            fg_label = fg['Functional Group']
+                            ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
+                            ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
-                    ax.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                    ax.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+                        # Customize plot
+                        ax_spec.set_xlim([x_axis.min(), x_axis.max()])
 
-                    if selected_smiles:
-                        ax.legend()
+                        major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
+                        ax_spec.set_xticks(major_ticks)
+                        ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
 
-                    st.pyplot(fig)
+                        ax_spec.tick_params(direction="in",
+                            labelbottom=True, labeltop=False, labelleft=True, labelright=False,
+                            bottom=True, top=True, left=True, right=True)
 
-                    # Download button for the spectra plot
-                    buf = io.BytesIO()
-                    fig.savefig(buf, format='png')
-                    buf.seek(0)
-                    st.download_button(label="Download Plot as PNG", data=buf, file_name="spectra_plot.png", mime="image/png")
+                        ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+                        ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+
+                        if selected_smiles:
+                            ax_spec.legend()
+
+                        st.pyplot(fig_spec)
+
+                        # Download button for the spectra plot
+                        buf_spec = io.BytesIO()
+                        fig_spec.savefig(buf_spec, format='png')
+                        buf_spec.seek(0)
+                        st.download_button(label="Download Plot as PNG", data=buf_spec, file_name="spectra_plot.png", mime="image/png")
+                        plt.close(fig_spec)
