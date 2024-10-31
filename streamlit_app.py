@@ -197,19 +197,17 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
-def bin_and_normalize_spectra(
+def bin_and_normalize_spectra_max(
     spectra, bin_size=None, bin_type='none',
-    normalization_percentile=95, max_peak_limit=1.0, debug=False
+    debug=False
 ):
     """
-    Bins and normalizes spectral data based on the specified percentile.
+    Bins and normalizes spectral data based on the maximum intensity.
     
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
     - bin_size: Size of each bin for binning. If None, no binning is performed.
     - bin_type: Type of binning ('wavelength' or 'none').
-    - normalization_percentile: Percentile to use for normalization (e.g., 95).
-    - max_peak_limit: Maximum allowed intensity for peaks after normalization. Default is 1.0.
     - debug: If True, plots the normalization process for debugging purposes.
     
     Returns:
@@ -236,23 +234,22 @@ def bin_and_normalize_spectra(
         binned_spectra = spectra.copy()
         x_axis = wavelength
 
-    # Percentile-based normalization
-    normalization_value = np.percentile(binned_spectra, normalization_percentile)
+    # Maximum-based normalization
+    max_value = np.max(binned_spectra)
     
-    if normalization_value == 0:
-        st.warning("Normalization value is zero. Unable to normalize the spectrum.")
+    if max_value == 0:
+        st.warning("Maximum intensity is zero. Unable to normalize the spectrum.")
         normalized_spectra = binned_spectra.copy()
     else:
-        normalized_spectra = binned_spectra / normalization_value
-        if max_peak_limit is not None:
-            # Cap the normalized values at max_peak_limit to prevent extremely high values
-            normalized_spectra = np.clip(normalized_spectra, 0, max_peak_limit)
+        normalized_spectra = binned_spectra / max_value
+        # Ensure no values exceed 1.0 due to floating point precision
+        normalized_spectra = np.clip(normalized_spectra, 0, 1.0)
 
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
         ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
-        ax_debug.axhline(normalization_value, color='r', linestyle='--', label=f'{normalization_percentile}th Percentile')
-        ax_debug.set_title("Percentile-Based Normalization")
+        ax_debug.axhline(max_value, color='r', linestyle='--', label=f'Maximum Intensity = {max_value}')
+        ax_debug.set_title("Maximum-Based Normalization")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Intensity")
         ax_debug.legend()
@@ -263,7 +260,7 @@ def bin_and_normalize_spectra(
 
 def bin_and_normalize_spectra_multi_segment(
     spectra, bin_size=None, bin_type='none',
-    normalization_percentile_low=95, normalization_percentile_high=95,
+    normalization_percentile_low=95, normalization_percentile_mid=95, normalization_percentile_high=95,
     max_peak_limit=1.0, debug=False
 ):
     """
@@ -274,6 +271,7 @@ def bin_and_normalize_spectra_multi_segment(
     - bin_size: Size of each bin for binning. If None, no binning is performed.
     - bin_type: Type of binning ('wavelength' or 'none').
     - normalization_percentile_low: Percentile for the low-wavelength segment.
+    - normalization_percentile_mid: Percentile for the mid-wavelength segment.
     - normalization_percentile_high: Percentile for the high-wavelength segment.
     - max_peak_limit: Maximum allowed intensity for peaks after normalization. Default is 1.0.
     - debug: If True, plots the normalization process for debugging purposes.
@@ -302,10 +300,18 @@ def bin_and_normalize_spectra_multi_segment(
         binned_spectra = spectra.copy()
         x_axis = wavelength
 
-    # Define wavelength segments
+    # Define wavelength segments without gaps
     segments = {
-        'low_wavelength': (3.0, 7.0),    # Includes 4 µm peak
-        'high_wavelength': (10.0, 20.0)  # Includes 15 µm Q-branch
+        'low_wavelength': (3.0, 7.0),      # Includes 4 µm peak
+        'mid_wavelength': (7.0, 10.0),     # Newly added to cover 7-10 µm
+        'high_wavelength': (10.0, 20.0)    # Includes 15 µm Q-branch
+    }
+
+    # Define corresponding percentiles for each segment
+    percentiles = {
+        'low_wavelength': normalization_percentile_low,
+        'mid_wavelength': normalization_percentile_mid,
+        'high_wavelength': normalization_percentile_high
     }
 
     normalized_spectra = np.zeros_like(binned_spectra)
@@ -317,15 +323,8 @@ def bin_and_normalize_spectra_multi_segment(
             continue
         
         seg_spectra = binned_spectra[seg_indices]
+        normalization_percentile = percentiles[seg_name]
         
-        # Select appropriate percentile based on segment
-        if seg_name == 'low_wavelength':
-            normalization_percentile = normalization_percentile_low
-        elif seg_name == 'high_wavelength':
-            normalization_percentile = normalization_percentile_high
-        else:
-            normalization_percentile = normalization_percentile_low  # Default
-
         normalization_value = np.percentile(seg_spectra, normalization_percentile)
         
         if normalization_value == 0:
@@ -346,10 +345,7 @@ def bin_and_normalize_spectra_multi_segment(
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
         ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
         for seg_name, (start, end) in segments.items():
-            if seg_name == 'low_wavelength':
-                normalization_percentile = normalization_percentile_low
-            elif seg_name == 'high_wavelength':
-                normalization_percentile = normalization_percentile_high
+            normalization_percentile = percentiles[seg_name]
             normalization_value = np.percentile(binned_spectra[(x_axis >= start) & (x_axis <= end)], normalization_percentile)
             ax_debug.axhline(normalization_value, linestyle='--', label=f'{normalization_percentile}th Percentile ({seg_name})')
         ax_debug.set_title("Multi-Segment Percentile-Based Normalization")
@@ -647,6 +643,14 @@ with col1:
                         step=1,
                         help="Choose a percentile to scale the low-wavelength segment."
                     )
+                    normalization_percentile_mid = st.slider(
+                        "Mid Wavelength Segment (7-10 µm) Percentile:",
+                        min_value=50,
+                        max_value=99,
+                        value=95,
+                        step=1,
+                        help="Choose a percentile to scale the mid-wavelength segment."
+                    )
                     normalization_percentile_high = st.slider(
                         "High Wavelength Segment (10-20 µm) Percentile:",
                         min_value=50,
@@ -772,12 +776,10 @@ with main_col2:
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Apply binning and normalization
                             if normalization_strategy == "Global":
-                                normalized_spectra, x_axis = bin_and_normalize_spectra(
+                                normalized_spectra, x_axis = bin_and_normalize_spectra_max(
                                     spectra, 
                                     bin_size=bin_size, 
                                     bin_type=bin_type.lower(),
-                                    normalization_percentile=normalization_percentile,
-                                    max_peak_limit=None,  # Remove clipping
                                     debug=False
                                 )
                             elif normalization_strategy == "Multi-Segment Percentile-Based":
@@ -786,6 +788,7 @@ with main_col2:
                                     bin_size=bin_size, 
                                     bin_type=bin_type.lower(),
                                     normalization_percentile_low=normalization_percentile_low,
+                                    normalization_percentile_mid=normalization_percentile_mid,
                                     normalization_percentile_high=normalization_percentile_high,
                                     max_peak_limit=1.0,  # Ensure y-axis can reach 1.0
                                     debug=False
@@ -801,12 +804,10 @@ with main_col2:
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Apply binning and normalization
                             if normalization_strategy == "Global":
-                                normalized_spectra, x_axis = bin_and_normalize_spectra(
+                                normalized_spectra, x_axis = bin_and_normalize_spectra_max(
                                     spectra, 
                                     bin_size=bin_size, 
                                     bin_type=bin_type.lower(),
-                                    normalization_percentile=normalization_percentile,
-                                    max_peak_limit=None,
                                     debug=False
                                 )
                             elif normalization_strategy == "Multi-Segment Percentile-Based":
@@ -815,6 +816,7 @@ with main_col2:
                                     bin_size=bin_size, 
                                     bin_type=bin_type.lower(),
                                     normalization_percentile_low=normalization_percentile_low,
+                                    normalization_percentile_mid=normalization_percentile_mid,
                                     normalization_percentile_high=normalization_percentile_high,
                                     max_peak_limit=1.0,
                                     debug=False
