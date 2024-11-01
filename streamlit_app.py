@@ -197,24 +197,24 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
-def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.3, max_peak_limit=0.7, debug=False):
+def bin_and_normalize_spectra_auto(
+    spectra, bin_size=None, bin_type='none',
+    peak_prominence=1.0, max_peak_limit=1.0, debug=False
+):
     """
-    Function to bin and normalize spectra, with enhanced Q-branch normalization.
-    Q-branch normalization is always applied, irrespective of binning.
+    Bins and normalizes spectral data based on automatically detected significant peaks.
     
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
     - bin_size: Size of each bin for binning. If None, no binning is performed.
     - bin_type: Type of binning ('wavelength' or 'none').
-    - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
-    - max_peak_limit: Maximum allowed intensity for peaks after normalization.
-    - debug: If True, plots peak detection for debugging purposes.
+    - peak_prominence: Minimum prominence of peaks to consider for normalization.
+    - max_peak_limit: Maximum allowed intensity after normalization. Default is 1.0.
+    - debug: If True, plots the normalization process for debugging purposes.
     
     Returns:
     - normalized_spectra: The normalized spectral data.
     - x_axis: The corresponding wavelength axis.
-    - peaks: Indices of detected peaks.
-    - properties: Properties of the detected peaks.
     """
     # Define wavenumber range
     wavenumber = np.arange(4000, 500, -1)
@@ -236,29 +236,37 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
         binned_spectra = spectra.copy()
         x_axis = wavelength
 
-    # Automatic Q-branch normalization
-    # Find the highest peak in the spectrum
-    highest_peak_idx = np.argmax(binned_spectra)
-    highest_peak_intensity = binned_spectra[highest_peak_idx]
-
-    if highest_peak_intensity == 0:
-        st.warning("Highest peak intensity is zero. Unable to normalize the spectrum.")
+    # Detect peaks
+    peaks, properties = find_peaks(binned_spectra, prominence=peak_prominence)
+    
+    if len(peaks) == 0:
+        st.warning("No significant peaks detected for normalization. Using global maximum.")
+        max_intensity = np.max(binned_spectra)
+    else:
+        max_intensity = np.max(binned_spectra[peaks])
+    
+    if max_intensity == 0:
+        st.warning("Maximum intensity is zero. Unable to normalize the spectrum.")
         normalized_spectra = binned_spectra.copy()
     else:
-        normalized_spectra = binned_spectra / highest_peak_intensity
-
+        normalized_spectra = binned_spectra / max_intensity
+        if max_peak_limit is not None:
+            # Cap the normalized values at max_peak_limit to prevent extremely high values
+            normalized_spectra = np.clip(normalized_spectra, 0, max_peak_limit)
+    
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
         ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
-        ax_debug.plot(x_axis[highest_peak_idx], binned_spectra[highest_peak_idx], "x", label='Highest Peak')
-        ax_debug.set_title("Q-Branch Normalization")
+        ax_debug.plot(x_axis[peaks], binned_spectra[peaks], "x", label='Detected Peaks')
+        ax_debug.axhline(max_intensity, color='r', linestyle='--', label=f'Normalization Value = {max_intensity}')
+        ax_debug.set_title("Automatic Peak-Based Normalization")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Intensity")
         ax_debug.legend()
         st.pyplot(fig_debug)
         plt.close(fig_debug)
 
-    return normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity
+    return normalized_spectra, x_axis
 
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
@@ -439,7 +447,7 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
+            tabs = st.tabs(["Filters", "Background Settings", "Binning and Normalization", "Peak Detection", "Sonogram"])
 
             with tabs[0]:
                 st.subheader("Filters")
@@ -508,23 +516,27 @@ with col1:
 
                 # Background molecule opacity control
                 st.markdown("**Background Molecule Opacity**")
-                background_opacity = st.slider('Set Background Molecule Opacity:', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
+                background_opacity = st.slider('Set Background Molecule Opacity:', min_value=0.0, max_value=1.0, value=0.1, step=0.01)
 
             with tabs[2]:
-                st.subheader("Binning Options")
+                st.subheader("Binning and Normalization Options")
                 bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength'])
 
                 if bin_type == 'Wavelength':
-                    bin_size = st.number_input('Enter bin size (µm):', min_value=0.01, max_value=5.0, value=0.1, step=0.01)
+                    bin_size = st.number_input('Enter bin size (µm):', min_value=0.01, max_value=5.0, value=0.2, step=0.01)
                 else:
                     bin_size = None
+
+                # Normalization is now automatic; remove manual normalization options
+                st.markdown("**Normalization:** Automatically handled based on detected peaks.")
 
             with tabs[3]:
                 st.subheader("Peak Detection")
 
                 # Peak Detection Parameters
+                peak_prominence = st.slider("Peak Prominence for Normalization:", 0.1, 10.0, 1.0, 0.1, help="Determine how prominent a peak must be to be considered for normalization.")
                 peak_height = st.slider("Peak Height Threshold", 0.0, 1.0, 0.3, 0.05)
-                peak_prominence = st.slider("Peak Prominence", 0.0, 1.0, 0.5, 0.05)
+                peak_prominence_detect = st.slider("Peak Prominence for Detection", 0.0, 1.0, 0.5, 0.05)
                 peak_width = st.slider("Peak Width", 1, 10, 2, 1)
 
                 # Enable Peak Finding and Labeling
@@ -583,6 +595,9 @@ with main_col2:
                 st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
             else:
                 with st.spinner('Generating plots, this may take some time...'):
+                    # Initialize a flag to determine if any plot was generated
+                    plot_generated = False
+
                     if st.session_state['plot_sonogram']:
                         # Sonogram plotting logic
                         intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
@@ -592,7 +607,8 @@ with main_col2:
                                 ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
 
                                 fig_sono, ax_sono = plt.subplots(figsize=(12, 12))
-                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[4000, 500, len(ordered_dist_mat), 0], cmap='viridis')
+                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', 
+                                              extent=[4000, 500, len(ordered_dist_mat), 0], cmap='viridis')
                                 ax_sono.set_xlabel("Wavenumber (cm⁻¹)")
                                 ax_sono.set_ylabel("Molecules")
                                 ax_sono.set_title("Sonogram Plot")
@@ -605,6 +621,8 @@ with main_col2:
                                 fig_sono.savefig(buf_sono, format='png')
                                 buf_sono.seek(0)
                                 st.download_button(label="Download Sonogram as PNG", data=buf_sono, file_name="sonogram.png", mime="image/png")
+
+                                plot_generated = True
                             except Exception as e:
                                 st.error(f"Error generating sonogram: {e}")
                         else:
@@ -627,14 +645,14 @@ with main_col2:
                             if spectra_row.empty:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                            # Apply binning and normalization
-                            normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
+                            # Apply binning and automatic normalization
+                            normalized_spectra, x_axis = bin_and_normalize_spectra_auto(
                                 spectra, 
                                 bin_size=bin_size, 
-                                bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
-                                q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                                max_peak_limit=0.7,
-                                debug=False  # Disable debug mode for regular plotting
+                                bin_type=bin_type.lower(),
+                                peak_prominence=peak_prominence,
+                                max_peak_limit=1.0,  # Ensure y-axis can reach 1.0
+                                debug=False
                             )
                             # Plot background molecule
                             ax_spec.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
@@ -645,14 +663,14 @@ with main_col2:
                             if spectra_row.empty:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                            # Apply binning and normalization
-                            normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
+                            # Apply binning and automatic normalization
+                            normalized_spectra, x_axis = bin_and_normalize_spectra_auto(
                                 spectra, 
                                 bin_size=bin_size, 
-                                bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
-                                q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                                max_peak_limit=0.7,
-                                debug=False  # Disable debug mode for regular plotting
+                                bin_type=bin_type.lower(),
+                                peak_prominence=peak_prominence,
+                                max_peak_limit=1.0,
+                                debug=False
                             )
                             target_spectra[smiles] = normalized_spectra
 
@@ -665,7 +683,7 @@ with main_col2:
                                 detected_peaks, detected_properties = find_peaks(
                                     normalized_spectra, 
                                     height=peak_height, 
-                                    prominence=peak_prominence, 
+                                    prominence=peak_prominence_detect, 
                                     width=peak_width
                                 )
 
@@ -703,16 +721,21 @@ with main_col2:
                             bottom=True, top=True, left=True, right=True)
 
                         ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                        ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+                        ax_spec.set_ylabel("Absorbance (Normalized)", fontsize=22)
 
                         if selected_smiles:
                             ax_spec.legend()
 
                         st.pyplot(fig_spec)
+                        plt.close(fig_spec)
 
                         # Download button for the spectra plot
                         buf_spec = io.BytesIO()
                         fig_spec.savefig(buf_spec, format='png')
                         buf_spec.seek(0)
                         st.download_button(label="Download Plot as PNG", data=buf_spec, file_name="spectra_plot.png", mime="image/png")
-                        plt.close(fig_spec)
+
+                        plot_generated = True
+
+                    if not plot_generated:
+                        st.info("No plots were generated based on your selections.")
