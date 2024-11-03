@@ -61,6 +61,7 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #ddd;  
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        margin-top: 10px; /* Added margin-top to create a paragraph break */
     }
     </style>
     """, unsafe_allow_html=True)
@@ -131,7 +132,8 @@ if functional_groups_key not in st.session_state:
 st.sidebar.markdown("""
     <div class="sidebar-title">Welcome to the Spectra Visualization Tool</div>
     <div class="description">  
-    <h3>App Functionalities:</h3>
+    App Functionalities:
+    <ul>
         <li><b>Data Loading:</b> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
         <li><b>SMARTS Filtering:</b> Filter molecules based on structural properties using SMARTS patterns.</li>
         <li><b>Advanced Bond Filtering:</b> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
@@ -141,8 +143,10 @@ st.sidebar.markdown("""
         <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
         <li><b>Functional Group Labels:</b> Add labels to specific wavelengths to identify background gases.</li>
         <li><b>Sonogram Plot:</b> Generate a comprehensive sonogram plot to visualize spectral differences across compounds.</li>
+    </ul>
     
-    <h3>How to Use:</h3>
+    How to Use:
+    <ol>
         <li><b>Login:</b> Enter your username and click "Login" to access the app.</li>
         <li><b>Data Loading:</b> Choose to use the pre-loaded dataset or upload your own data.</li>
         <li><b>Filtering:</b> Apply SMARTS and/or bond filtering to refine your dataset.</li>
@@ -153,8 +157,9 @@ st.sidebar.markdown("""
         <li><b>Functional Group Labels:</b> Add labels to specific wavelengths for easier identification of background gases.</li>
         <li><b>Plotting:</b> Select foreground molecules and confirm to generate the plots.</li>
         <li><b>Download:</b> After plotting, download the visualizations as PNG files if desired.</li>
+    </ol>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # ---------------------------
 # Data Loading
