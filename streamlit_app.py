@@ -61,30 +61,6 @@ st.markdown("""
         border: 1px solid #ddd;  
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
-    .tooltip {
-        position: relative;
-        display: inline-block;
-        border-bottom: 1px dotted black;
-    }
-
-    .tooltip .tooltiptext {
-        visibility: hidden;
-        width: 200px;
-        background-color: #f9f9f9;
-        color: #000;
-        text-align: left;
-        border: 1px solid #ccc;
-        padding: 5px;
-        border-radius: 4px;
-
-        /* Position the tooltip */
-        position: absolute;
-        z-index: 1;
-    }
-
-    .tooltip:hover .tooltiptext {
-        visibility: visible;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -502,20 +478,33 @@ with col1:
                 st.subheader("Filters")
 
                 # SMARTS Filtering
-                use_smarts_filter = st.checkbox('Apply SMARTS Filtering')
+                use_smarts_filter = st.checkbox(
+                    'Apply SMARTS Filtering',
+                    help="Filter molecules based on structural properties using SMARTS patterns."
+                )
                 if use_smarts_filter:
-                    functional_group_smarts = st.text_input("Enter a SMARTS pattern to filter molecules:", "")
+                    functional_group_smarts = st.text_input(
+                        "Enter a SMARTS pattern to filter molecules:",
+                        "",
+                        help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
+                    )
                     if functional_group_smarts:
                         filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
                         st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
                         filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
 
                 # Advanced Bond Filtering
-                use_advanced_filter = st.checkbox('Apply Advanced Bond Filtering')
+                use_advanced_filter = st.checkbox(
+                    'Apply Advanced Bond Filtering',
+                    help="Refine your dataset by selecting specific bond types (e.g., C-H, O-H)."
+                )
                 if use_advanced_filter:
-                    bond_input = st.selectbox("Select a bond type to filter molecules:", 
-                                              ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
-                                               "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"])
+                    bond_input = st.selectbox(
+                        "Select a bond type to filter molecules:", 
+                        ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
+                         "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"],
+                        help="Choose a specific bond type to filter molecules that contain this bond."
+                    )
                     if bond_input and bond_input != "None":
                         filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
                         st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
@@ -532,17 +521,29 @@ with col1:
                 selected_fg = st.multiselect(
                     "Select Functional Groups for Background Molecules:",
                     options=list(functional_groups.keys()),
-                    default=[]
+                    default=[],
+                    help="Choose one or more functional groups to designate background molecules based on their structural features."
                 )
 
                 # Alternatively, allow user to input SMARTS patterns
-                add_custom_fg = st.checkbox("Add Custom Functional Group")
+                add_custom_fg = st.checkbox(
+                    "Add Custom Functional Group",
+                    help="Enable to add a custom functional group by providing a label and its SMARTS pattern."
+                )
                 if add_custom_fg:
                     col_fg1, col_fg2 = st.columns([1, 2])
                     with col_fg1:
-                        custom_fg_label = st.text_input("Custom Functional Group Label:", key='custom_fg_label')
+                        custom_fg_label = st.text_input(
+                            "Custom Functional Group Label:",
+                            key='custom_fg_label',
+                            help="Provide a unique label for the custom functional group."
+                        )
                     with col_fg2:
-                        custom_fg_smarts = st.text_input("Custom Functional Group SMARTS:", key='custom_fg_smarts')
+                        custom_fg_smarts = st.text_input(
+                            "Custom Functional Group SMARTS:",
+                            key='custom_fg_smarts',
+                            help="Enter a valid SMARTS pattern that defines the custom functional group."
+                        )
                     if st.button("Add Custom Functional Group"):
                         if custom_fg_label and custom_fg_smarts:
                             st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
@@ -565,27 +566,37 @@ with col1:
 
                 # Background molecule opacity control
                 st.markdown("**Background Molecule Opacity**")
-                background_opacity = st.slider('Set Background Molecule Opacity:', min_value=0.0, max_value=1.0, value=0.01, step=0.01)
+                background_opacity = st.slider(
+                    'Set Background Molecule Opacity:',
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.01,
+                    step=0.01,
+                    help="Adjust the transparency of background molecules. Lower values make them more transparent."
+                )
 
             with tabs[2]:
                 st.subheader("Binning Options")
-                bin_type = st.selectbox('Select binning type:', ['None', 'Wavelength'])
+                bin_type = st.selectbox(
+                    'Select binning type:',
+                    ['None', 'Wavelength'],
+                    help="Choose how to bin the spectral data. Binning by wavelength can simplify the spectra by averaging data points."
+                )
 
                 if bin_type == 'Wavelength':
-                    bin_size = st.number_input('Enter bin size (µm):', min_value=0.01, max_value=5.0, value=0.1, step=0.01)
+                    bin_size = st.number_input(
+                        'Enter bin size (µm):',
+                        min_value=0.01,
+                        max_value=5.0,
+                        value=0.1,
+                        step=0.01,
+                        help="Specify the size of each wavelength bin in micrometers (µm). Smaller bin sizes retain more detail."
+                    )
                 else:
                     bin_size = None
 
             with tabs[3]:
                 st.subheader("Peak Detection")
-
-                st.markdown("""
-                <div class="tooltip">ℹ️
-                    <span class="tooltiptext">
-                        Peak detection identifies significant peaks in the spectral data, representing key molecular features.
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
 
                 st.markdown("""
                 Peak detection helps identify significant features in the spectral data. Adjust the sensitivity to control how easily peaks are detected.
@@ -622,7 +633,10 @@ with col1:
 
                     # Form to input functional group data based on wavelength
                     with st.form(key='functional_group_form'):
-                        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)", help="Name of the functional group to label the peak.")
+                        fg_label = st.text_input(
+                            "Functional Group Label (e.g., C-C, N=C=O)",
+                            help="Name of the functional group to label the peak."
+                        )
                         fg_wavelength = st.number_input(
                             "Wavelength Position (µm)",
                             min_value=3.0,
@@ -661,7 +675,11 @@ with col1:
                 st.subheader("Sonogram")
 
                 # Plot Sonogram Checkbox
-                st.session_state['plot_sonogram'] = st.checkbox('Plot Sonogram for All Molecules', value=False)
+                st.session_state['plot_sonogram'] = st.checkbox(
+                    'Plot Sonogram for All Molecules',
+                    value=False,
+                    help="Check to generate a sonogram plot visualizing spectral differences across all molecules."
+                )
 
         # Foreground Molecules Selection (Clean Interface)
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
