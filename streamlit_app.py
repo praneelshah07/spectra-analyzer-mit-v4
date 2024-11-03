@@ -23,10 +23,9 @@ import uuid
 # Set page layout to 'wide' for full screen usage
 st.set_page_config(page_title="Spectra Visualization App", layout="wide")
 
-# Adding custom CSS to style the banner, headers, and sidebar
+# Adding custom CSS to style the banner, headers, and descriptions
 st.markdown("""
     <style>
-    /* Banner Styling */
     .banner {
         width: 100%;
         background-color: #89CFF0;  /* Sky Blue */
@@ -35,36 +34,23 @@ st.markdown("""
         text-align: center;
         font-size: 45px;  
         font-weight: bold;
-        margin-bottom: 30px;
-        border-radius: 10px;
+        margin-bottom: 20px;
     }
-
-    /* Sidebar Title Styling for User Login */
-    .sidebar-login-title {
+    .header {
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #f0f8ff;
+        border: 2px solid #89CFF0;
+        border-radius: 10px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .sidebar-title {
         font-size: 25px;  
         font-weight: bold;
         text-align: center;
-        background-color: #89CFF0;  /* Sky Blue */
-        color: white;
-        padding: 10px;
-        border-radius: 10px;
-        margin-bottom: 15px;
     }
-
-    /* Sidebar Title Styling for Welcome */
-    .sidebar-welcome-title {
-        font-size: 25px;  
-        font-weight: bold;
-        text-align: center;
-        background-color: #89CFF0;  /* Sky Blue */
-        color: white;
-        padding: 10px;
-        border-radius: 10px;
-        margin-top: 20px;
-        margin-bottom: 15px;
-    }
-
-    /* Sidebar Description Styling */
     .description {
         font-size: 14px;  
         line-height: 1.6;  
@@ -75,22 +61,6 @@ st.markdown("""
         border: 1px solid #ddd;  
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
-
-    /* List Styling within Description */
-    .description ul, .description ol {
-        margin-left: 20px;
-        padding-left: 0;
-    }
-
-    .description li {
-        margin-bottom: 8px;
-    }
-
-    /* Adjust Streamlit Sidebar Background */
-    [data-testid="stSidebar"] {
-        background-color: #ffffff;  /* White background for the sidebar */
-    }
-
     </style>
     """, unsafe_allow_html=True)
 
@@ -132,12 +102,8 @@ if 'peak_finding_enabled' not in st.session_state:
 if 'num_peaks' not in st.session_state:
     st.session_state['num_peaks'] = 5
 
-# ---------------------------
-# Sidebar Components
-# ---------------------------
-
-# User Login Section
-st.sidebar.markdown('<div class="sidebar-login-title">User Login</div>', unsafe_allow_html=True)
+# Simplified authentication: Only username required
+st.sidebar.title("User Login")
 username = st.sidebar.text_input("Username")
 login_button = st.sidebar.button("Login")
 
@@ -156,40 +122,43 @@ functional_groups_key = f'{user_id}_functional_groups'
 if functional_groups_key not in st.session_state:
     st.session_state[functional_groups_key] = []
 
-# Welcome Section
-st.sidebar.markdown('<div class="sidebar-welcome-title">Welcome to the Spectra Visualization Tool</div>', unsafe_allow_html=True)
-
+# ---------------------------
 # Sidebar Instructions
+# ---------------------------
+
+# Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
+    <div class="sidebar-title">Welcome to the Spectra Visualization Tool</div>
+    
     <div class="description">  
-        <h3>App Functionalities:</h3>
-        <ul>
-            <li><strong>Data Loading:</strong> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
-            <li><strong>SMARTS Filtering:</strong> Filter molecules based on structural properties using SMARTS patterns.</li>
-            <li><strong>Advanced Bond Filtering:</strong> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
-            <li><strong>Background Functional Groups:</strong> Select or add functional groups to designate background molecules.</li>
-            <li><strong>Background Opacity:</strong> Adjust the transparency of background molecules to emphasize foreground data.</li>
-            <li><strong>Binning Options:</strong> Simplify your spectra by binning data points based on wavelength.</li>
-            <li><strong>Peak Detection:</strong> Enable and configure peak detection parameters to identify significant spectral features.</li>
-            <li><strong>Functional Group Labels:</strong> Add labels to specific wavelengths to identify background gases.</li>
-            <li><strong>Sonogram Plot:</strong> Generate a comprehensive sonogram plot to visualize spectral differences across compounds.</li>
-        </ul>
-        
-        <h3>How to Use:</h3>
-        <ol>
-            <li><strong>Login:</strong> Enter your username and click "Login" to access the app.</li>
-            <li><strong>Data Loading:</strong> Choose to use the pre-loaded dataset or upload your own data.</li>
-            <li><strong>Filtering:</strong> Apply SMARTS and/or bond filtering to refine your dataset.</li>
-            <li><strong>Background Selection:</strong> Select functional groups to designate background molecules or plot all by default.</li>
-            <li><strong>Adjust Opacity:</strong> Set the opacity level for background molecules.</li>
-            <li><strong>Binning:</strong> Choose binning options to simplify your spectra visualization.</li>
-            <li><strong>Peak Detection:</strong> Enable peak detection and configure parameters for accurate feature identification.</li>
-            <li><strong>Functional Group Labels:</strong> Add labels to specific wavelengths for easier identification of background gases.</li>
-            <li><strong>Plotting:</strong> Select foreground molecules and confirm to generate the plots.</li>
-            <li><strong>Download:</strong> After plotting, download the visualizations as PNG files if desired.</li>
-        </ol>
+    <h3>App Functionalities:</h3>
+    <ul>
+        <li><b>Data Loading:</b> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
+        <li><b>SMARTS Filtering:</b> Filter molecules based on structural properties using SMARTS patterns.</li>
+        <li><b>Advanced Bond Filtering:</b> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
+        <li><b>Background Functional Groups:</b> Select or add functional groups to designate background molecules.</li>
+        <li><b>Background Opacity:</b> Adjust the transparency of background molecules to emphasize foreground data.</li>
+        <li><b>Binning Options:</b> Simplify your spectra by binning data points based on wavelength.</li>
+        <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
+        <li><b>Functional Group Labels:</b> Add labels to specific wavelengths to identify background gases.</li>
+        <li><b>Sonogram Plot:</b> Generate a comprehensive sonogram plot to visualize spectral differences across compounds.</li>
+    </ul>
+    
+    <h3>How to Use:</h3>
+    <ol>
+        <li><b>Login:</b> Enter your username and click "Login" to access the app.</li>
+        <li><b>Data Loading:</b> Choose to use the pre-loaded dataset or upload your own data.</li>
+        <li><b>Filtering:</b> Apply SMARTS and/or bond filtering to refine your dataset.</li>
+        <li><b>Background Selection:</b> Select functional groups to designate background molecules or plot all by default.</li>
+        <li><b>Adjust Opacity:</b> Set the opacity level for background molecules.</li>
+        <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
+        <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
+        <li><b>Functional Group Labels:</b> Add labels to specific wavelengths for easier identification of background gases.</li>
+        <li><b>Plotting:</b> Select foreground molecules and confirm to generate the plots.</li>
+        <li><b>Download:</b> After plotting, download the visualizations as PNG files if desired.</li>
+    </ol>
     </div>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ---------------------------
 # Data Loading
