@@ -50,7 +50,6 @@ st.markdown("""
         font-size: 25px;  
         font-weight: bold;
         text-align: center;
-        line-height: 1.2;  
     }
     .description {
         font-size: 14px;  
