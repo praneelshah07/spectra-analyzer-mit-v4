@@ -50,7 +50,6 @@ st.markdown("""
         font-size: 25px;  
         font-weight: bold;
         text-align: center;
-        line-height: 1.2;  
     }
     .description {
         font-size: 14px;  
@@ -129,7 +128,7 @@ if functional_groups_key not in st.session_state:
 
 # Move instructions to the sidebar with improved design
 st.sidebar.markdown("""
-    <div class="sidebar-title"><p>Welcome to the Spectra Visualization Tool</p></div>
+    <div class="sidebar-title">Welcome to the Spectra Visualization Tool</div>
     
     <div class="description">  
     <h3>App Functionalities:</h3>
