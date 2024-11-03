@@ -61,6 +61,30 @@ st.markdown("""
         border: 1px solid #ddd;  
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        border-bottom: 1px dotted black;
+    }
+
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 200px;
+        background-color: #f9f9f9;
+        color: #000;
+        text-align: left;
+        border: 1px solid #ccc;
+        padding: 5px;
+        border-radius: 4px;
+
+        /* Position the tooltip */
+        position: absolute;
+        z-index: 1;
+    }
+
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -356,6 +380,39 @@ def compute_serial_matrix(dist_mat, method="ward"):
     return ordered_dist_mat, res_order, res_linkage
 
 # ---------------------------
+# Peak Detection Function
+# ---------------------------
+
+def detect_peaks(spectra, sensitivity=0.5, max_peaks=5):
+    """
+    Detect peaks in a spectrum using simplified parameters.
+
+    Parameters:
+    - spectra: Normalized spectral intensity data (numpy array).
+    - sensitivity: Determines the minimum height and prominence of peaks (float between 0 and 1).
+    - max_peaks: Maximum number of peaks to detect.
+
+    Returns:
+    - peaks: Indices of detected peaks.
+    - properties: Properties of the detected peaks.
+    """
+    # Adjust height and prominence based on sensitivity
+    height = sensitivity
+    prominence = sensitivity
+
+    # Detect peaks
+    peaks, properties = find_peaks(spectra, height=height, prominence=prominence)
+
+    # If more peaks are detected than max_peaks, select the top ones based on prominence
+    if len(peaks) > max_peaks:
+        prominences = properties['prominences']
+        sorted_indices = np.argsort(prominences)[::-1]
+        peaks = peaks[sorted_indices[:max_peaks]]
+        properties = {key: val[sorted_indices[:max_peaks]] for key, val in properties.items()}
+
+    return peaks, properties
+
+# ---------------------------
 # Streamlit Layout
 # ---------------------------
 
@@ -522,30 +579,70 @@ with col1:
             with tabs[3]:
                 st.subheader("Peak Detection")
 
-                # Peak Detection Parameters
-                peak_height = st.slider("Peak Height Threshold", 0.0, 1.0, 0.3, 0.05)
-                peak_prominence = st.slider("Peak Prominence", 0.0, 1.0, 0.5, 0.05)
-                peak_width = st.slider("Peak Width", 1, 10, 2, 1)
+                st.markdown("""
+                <div class="tooltip">ℹ️
+                    <span class="tooltiptext">
+                        Peak detection identifies significant peaks in the spectral data, representing key molecular features.
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("""
+                Peak detection helps identify significant features in the spectral data. Adjust the sensitivity to control how easily peaks are detected.
+                """)
+
+                # Simplified Peak Detection Parameters
+                peak_sensitivity = st.slider(
+                    "Sensitivity",
+                    min_value=0.1,
+                    max_value=1.0,
+                    value=0.5,
+                    step=0.1,
+                    help="Adjust the sensitivity of peak detection. Higher values detect more prominent peaks."
+                )
+
+                max_peaks = st.slider(
+                    "Maximum Number of Peaks to Display",
+                    min_value=1,
+                    max_value=10,
+                    value=5,
+                    step=1,
+                    help="Set the maximum number of peaks to identify and label."
+                )
 
                 # Enable Peak Finding and Labeling
-                st.session_state['peak_finding_enabled'] = st.checkbox('Enable Peak Finding and Labeling', value=False)
-                
-                if st.session_state['peak_finding_enabled']:
-                    st.markdown("**Background Gas Functional Group Labels**")
-                    
+                enable_peak_finding = st.checkbox(
+                    'Enable Peak Detection and Labeling',
+                    value=False,
+                    help="Check to enable automatic peak detection and labeling on the spectra plots."
+                )
+
+                if enable_peak_finding:
+                    st.markdown("### Peak Labels")
+
                     # Form to input functional group data based on wavelength
                     with st.form(key='functional_group_form'):
-                        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)")
-                        fg_wavelength = st.number_input("Wavelength Position (µm)", min_value=3.0, max_value=20.0, value=15.0, step=0.1)
+                        fg_label = st.text_input("Functional Group Label (e.g., C-C, N=C=O)", help="Name of the functional group to label the peak.")
+                        fg_wavelength = st.number_input(
+                            "Wavelength Position (µm)",
+                            min_value=3.0,
+                            max_value=20.0,
+                            value=15.0,
+                            step=0.1,
+                            help="Wavelength position where the functional group peak is expected."
+                        )
                         add_fg = st.form_submit_button("Add Functional Group")
-                    
+
                     if add_fg:
                         if fg_label and fg_wavelength:
-                            st.session_state[functional_groups_key].append({'Functional Group': fg_label, 'Wavelength': fg_wavelength})
+                            st.session_state[functional_groups_key].append({
+                                'Functional Group': fg_label,
+                                'Wavelength': fg_wavelength
+                            })
                             st.success(f"Added functional group: {fg_label} at {fg_wavelength} µm")
                         else:
                             st.error("Please provide both label and wavelength for the functional group.")
-                    
+
                     # Display existing functional group labels and allow deletion
                     if st.session_state[functional_groups_key]:
                         st.markdown("**Current Functional Group Labels:**")
@@ -628,7 +725,7 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Apply binning and normalization
-                            normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
+                            normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
                                 spectra, 
                                 bin_size=bin_size, 
                                 bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
@@ -646,7 +743,7 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Apply binning and normalization
-                            normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity = bin_and_normalize_spectra(
+                            normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
                                 spectra, 
                                 bin_size=bin_size, 
                                 bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
@@ -660,29 +757,27 @@ with main_col2:
                             color = color_options[idx % len(color_options)]
                             ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
 
-                            if st.session_state['peak_finding_enabled']:
-                                # Detect peaks with user-defined parameters
-                                detected_peaks, detected_properties = find_peaks(
-                                    normalized_spectra, 
-                                    height=peak_height, 
-                                    prominence=peak_prominence, 
-                                    width=peak_width
+                            if enable_peak_finding:
+                                # Detect peaks with simplified parameters
+                                detected_peaks, detected_properties = detect_peaks(
+                                    normalized_spectra,
+                                    sensitivity=peak_sensitivity,
+                                    max_peaks=max_peaks
                                 )
 
-                                # Sort the peaks by their prominence and select the top `num_peaks`
-                                if len(detected_peaks) > 0:
-                                    prominences = detected_properties['prominences']
-                                    peaks_with_prominences = sorted(zip(detected_peaks, prominences), key=lambda x: x[1], reverse=True)
-                                    num_peaks = st.session_state['num_peaks']
-                                    top_peaks = [p[0] for p in peaks_with_prominences[:num_peaks]]
-
-                                    # Label the top peaks
-                                    for peak in top_peaks:
-                                        peak_wavelength = x_axis[peak]
-                                        peak_intensity = normalized_spectra[peak]
-                                        # Label the peaks with wavelength
-                                        ax_spec.text(peak_wavelength, peak_intensity + 0.05, f'{peak_wavelength:.1f} µm', 
-                                                fontsize=10, ha='center', color=color)
+                                # Label the detected peaks
+                                for peak in detected_peaks:
+                                    peak_wavelength = x_axis[peak]
+                                    peak_intensity = normalized_spectra[peak]
+                                    ax_spec.plot(peak_wavelength, peak_intensity, "x", color=color)
+                                    ax_spec.text(
+                                        peak_wavelength,
+                                        peak_intensity + 0.02,
+                                        f'{peak_wavelength:.1f} µm',
+                                        fontsize=9,
+                                        ha='center',
+                                        color=color
+                                    )
 
                         # Add functional group labels for background gases based on wavelength
                         for fg in st.session_state[functional_groups_key]:
@@ -714,5 +809,10 @@ with main_col2:
                         buf_spec = io.BytesIO()
                         fig_spec.savefig(buf_spec, format='png')
                         buf_spec.seek(0)
-                        st.download_button(label="Download Plot as PNG", data=buf_spec, file_name="spectra_plot.png", mime="image/png")
+                        st.download_button(
+                            label="Download Plot as PNG",
+                            data=buf_spec,
+                            file_name="spectra_plot.png",
+                            mime="image/png"
+                        )
                         plt.close(fig_spec)
