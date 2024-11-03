@@ -158,7 +158,6 @@ if functional_groups_key not in st.session_state:
 # Enhanced Sidebar Content
 st.sidebar.markdown("""
     <div class="sidebar-title">Welcome to the Spectra Visualization Tool</div>
-    
     <div class="description">  
         <h3>App Functionalities:</h3>
         <ul>
@@ -174,7 +173,7 @@ st.sidebar.markdown("""
         </ul>
         
         <h3>How to Use:</h3>
-        <ol>
+        <ul>
             <li><strong>Login:</strong> Enter your username and click "Login" to access the app.</li>
             <li><strong>Data Loading:</strong> Choose to use the pre-loaded dataset or upload your own data.</li>
             <li><strong>Filtering:</strong> Apply SMARTS and/or bond filtering to refine your dataset.</li>
@@ -185,7 +184,7 @@ st.sidebar.markdown("""
             <li><strong>Functional Group Labels:</strong> Add labels to specific wavelengths for easier identification of background gases.</li>
             <li><strong>Plotting:</strong> Select foreground molecules and confirm to generate the plots.</li>
             <li><strong>Download:</strong> After plotting, download the visualizations as PNG files if desired.</li>
-        </ol>
+        </ul>
     </div>
     """, unsafe_allow_html=True)
 
