@@ -43,8 +43,8 @@ st.markdown("""
     .sidebar-title {
         font-size: 24px;  
         font-weight: bold;
-        color: #ffffff;
-        background-color: #4682B4;  /* Steel Blue */
+        color: #ffffff;  /* White Text */
+        background-color: #89CFF0;  /* Sky Blue */
         padding: 10px 15px;
         border-radius: 8px;
         text-align: center;
@@ -55,11 +55,11 @@ st.markdown("""
     .description {
         font-size: 14px;  
         line-height: 1.6;  
-        color: #333333;
-        background-color: #f0f8ff;
+        color: #ffffff;  /* White Text for better contrast against Sky Blue */
+        background-color: #89CFF0;  /* Sky Blue */
         padding: 15px;
         border-radius: 10px;
-        border: 1px solid #ddd;  
+        border: 2px solid #ffffff;  /* White Border for definition */
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
     }
@@ -87,8 +87,9 @@ st.markdown("""
     }
 
     /* Adjust Streamlit Sidebar Background */
-    .css-1d391kg {  /* This class targets the Streamlit sidebar */
-        background-color: #e6f2ff;
+    /* Note: Streamlit's class names may change; ensure this targets the sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff;  /* White background for the sidebar */
     }
     </style>
     """, unsafe_allow_html=True)
