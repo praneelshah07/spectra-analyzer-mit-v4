@@ -264,11 +264,11 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
     """
     Filters molecules based on a SMARTS pattern.
-    
+
     Parameters:
     - smiles_list: List of SMILES strings.
     - functional_group_smarts: SMARTS pattern to filter molecules.
-    
+
     Returns:
     - filtered_smiles: List of SMILES strings that match the SMARTS pattern.
     """
@@ -278,10 +278,20 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
         if fg_mol is None:
             st.error("Invalid SMARTS pattern provided.")
             return filtered_smiles
+        
+        # Add explicit hydrogens to the functional group molecule
+        fg_mol = Chem.AddHs(fg_mol)
+        if fg_mol is None:
+            st.error("Error adding hydrogens to the functional group.")
+            return filtered_smiles
+
         for smiles in smiles_list:
             mol = Chem.MolFromSmiles(smiles)
-            if mol and mol.HasSubstructMatch(fg_mol):
-                filtered_smiles.append(smiles)
+            if mol:
+                # Add explicit hydrogens to the molecule
+                mol = Chem.AddHs(mol)
+                if mol.HasSubstructMatch(fg_mol):
+                    filtered_smiles.append(smiles)
     except Exception as e:
         st.error(f"Error in SMARTS filtering: {e}")
     return filtered_smiles
