@@ -79,18 +79,19 @@ if 'functional_groups' not in st.session_state:
     st.session_state['functional_groups'] = []
 
 if 'functional_groups_dict' not in st.session_state:
+    # Updated SMARTS patterns to use implicit hydrogens
     st.session_state['functional_groups_dict'] = {
-        "C-H": "[C][H]",
-        "O-H": "[O][H]",
-        "N-H": "[N][H]",
+        "C-H": "[CH]",
+        "O-H": "[OH]",
+        "N-H": "[NH]",
         "C=O": "[C]=[O]",
         "C-O": "[C][O]",
         "C#N": "[C]#[N]",
-        "S-H": "[S][H]",
+        "S-H": "[SH]",
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[P][H]"
+        "P-H": "[PH]"
     }
 
 if 'plot_sonogram' not in st.session_state:
@@ -279,17 +280,13 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
             st.error("Invalid SMARTS pattern provided.")
             return filtered_smiles
         
-        # Add explicit hydrogens to the functional group molecule
-        fg_mol = Chem.AddHs(fg_mol)
-        if fg_mol is None:
-            st.error("Error adding hydrogens to the functional group.")
-            return filtered_smiles
-
         for smiles in smiles_list:
             mol = Chem.MolFromSmiles(smiles)
             if mol:
                 # Add explicit hydrogens to the molecule
                 mol = Chem.AddHs(mol)
+                # Sanitize molecule to calculate implicit valence
+                Chem.SanitizeMol(mol)
                 if mol.HasSubstructMatch(fg_mol):
                     filtered_smiles.append(smiles)
     except Exception as e:
@@ -309,19 +306,19 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
     - filtered_smiles: List of SMILES strings that match the bond pattern.
     """
     bond_patterns = {
-        "C-H": "[C][H]",
+        "C-H": "[CH]",
         "C=C": "[C]=[C]",
         "C#C": "[C]#[C]",
-        "O-H": "[O][H]",
-        "N-H": "[N][H]",
+        "O-H": "[OH]",
+        "N-H": "[NH]",
         "C=O": "[C]=[O]",
         "C-O": "[C][O]",
         "C#N": "[C]#[N]",
-        "S-H": "[S][H]",
+        "S-H": "[SH]",
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[P][H]"
+        "P-H": "[PH]"
     }
 
     bond_smarts = bond_patterns.get(bond_pattern, bond_pattern)
@@ -338,8 +335,13 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
     filtered_smiles = []
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
-        if mol and mol.HasSubstructMatch(bond_mol):
-            filtered_smiles.append(smiles)
+        if mol:
+            # Add explicit hydrogens to the molecule
+            mol = Chem.AddHs(mol)
+            # Sanitize molecule to calculate implicit valence
+            Chem.SanitizeMol(mol)
+            if mol.HasSubstructMatch(bond_mol):
+                filtered_smiles.append(smiles)
     return filtered_smiles
 
 def compute_serial_matrix(dist_mat, method="ward"):
@@ -556,8 +558,13 @@ with col1:
                         )
                     if st.button("Add Custom Functional Group"):
                         if custom_fg_label and custom_fg_smarts:
-                            st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
-                            st.success(f"Added custom functional group: {custom_fg_label}")
+                            # Validate the SMARTS pattern before adding
+                            fg_test = Chem.MolFromSmarts(custom_fg_smarts)
+                            if fg_test:
+                                st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
+                                st.success(f"Added custom functional group: {custom_fg_label}")
+                            else:
+                                st.error("Invalid SMARTS pattern provided. Please enter a valid SMARTS.")
                         else:
                             st.error("Please provide both label and SMARTS pattern for the custom functional group.")
 
