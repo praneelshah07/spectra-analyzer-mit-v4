@@ -603,10 +603,10 @@ with col1:
                 if bin_type == 'Wavelength':
                     bin_size = st.number_input(
                         'Enter bin size (µm):',
-                        min_value=0.01,
+                        min_value=0.001,
                         max_value=5.0,
                         value=0.1,
-                        step=0.01,
+                        step=0.001,
                         help="Specify the size of each wavelength bin in micrometers (µm). Smaller bin sizes retain more detail."
                     )
                 else:
