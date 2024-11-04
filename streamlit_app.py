@@ -607,6 +607,7 @@ with col1:
                         max_value=5.0,
                         value=0.1,
                         step=0.001,
+                        format="%.3f",
                         help="Specify the size of each wavelength bin in micrometers (µm). Smaller bin sizes retain more detail."
                     )
                 else:
