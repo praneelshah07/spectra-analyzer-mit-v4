@@ -91,7 +91,9 @@ if 'functional_groups_dict' not in st.session_state:
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[PH]"
+        "P-H": "[PH]",
+        "C=C": "[C]=[C]",
+        "C#C": "[C]#[C]"
     }
 
 if 'plot_sonogram' not in st.session_state:
@@ -149,8 +151,7 @@ st.sidebar.markdown("""
     <ol>
         <li><b>Login:</b> Enter your username and click "Login" to access the app.</li>
         <li><b>Data Loading:</b> Choose to use the pre-loaded dataset or upload your own data.</li>
-        <li><b>Filtering:</b> Apply SMARTS and/or bond filtering to refine your dataset.</li>
-        <li><b>Background Selection:</b> Select functional groups to designate background molecules or plot all by default.</li>
+        <li><b>Filtering:</b> Select functional groups to filter and designate background molecules.</li>
         <li><b>Adjust Opacity:</b> Set the opacity level for background molecules.</li>
         <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
         <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
@@ -492,43 +493,8 @@ with col1:
             with tabs[0]:
                 st.subheader("Background Gas Settings")
 
-                # **SMARTS Filtering**
-                st.markdown("**SMARTS Filtering**")
-                use_smarts_filter = st.checkbox(
-                    'Apply SMARTS Filtering',
-                    help="Filter molecules based on structural properties using SMARTS patterns."
-                )
-                if use_smarts_filter:
-                    functional_group_smarts = st.text_input(
-                        "Enter a SMARTS pattern to filter molecules:",
-                        "",
-                        help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
-                    )
-                    if functional_group_smarts:
-                        filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
-                        st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
-                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
-
-                # **Advanced Bond Filtering**
-                st.markdown("**Advanced Bond Filtering**")
-                use_advanced_filter = st.checkbox(
-                    'Apply Advanced Bond Filtering',
-                    help="Refine your dataset by selecting specific bond types (e.g., C-H, O-H)."
-                )
-                if use_advanced_filter:
-                    bond_input = st.selectbox(
-                        "Select a bond type to filter molecules:", 
-                        ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
-                         "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"],
-                        help="Choose a specific bond type to filter molecules that contain this bond."
-                    )
-                    if bond_input and bond_input != "None":
-                        filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
-                        st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
-                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
-
-                # **Background Functional Groups**
-                st.markdown("**Background Functional Groups**")
+                # **Functional Groups Filtering**
+                st.markdown("**Functional Groups Filtering**")
                 functional_groups = st.session_state['functional_groups_dict']
 
                 # User selects multiple functional groups
@@ -539,7 +505,23 @@ with col1:
                     help="Choose one or more functional groups to designate background molecules based on their structural features."
                 )
 
-                # Alternatively, allow user to input SMARTS patterns
+                # **Background Molecule Filtering**
+                background_smiles = []
+                if selected_fg:
+                    # Initialize background_smiles as all SMILES to perform intersection
+                    background_smiles = set(data['SMILES'].unique())
+                    for fg_label in selected_fg:
+                        fg_smarts = functional_groups.get(fg_label)
+                        if fg_smarts:
+                            bg_smiles = set(filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts))
+                            background_smiles = background_smiles.intersection(bg_smiles)
+                    background_smiles = list(background_smiles)
+                    st.write(f"Selected {len(background_smiles)} molecules as background based on selected functional groups.")
+                else:
+                    background_smiles = []  # Will handle default later
+
+                # **Add Custom Functional Group**
+                st.markdown("**Add Custom Functional Group**")
                 add_custom_fg = st.checkbox(
                     "Add Custom Functional Group",
                     help="Enable to add a custom functional group by providing a label and its SMARTS pattern."
@@ -569,19 +551,6 @@ with col1:
                                 st.error("Invalid SMARTS pattern provided. Please enter a valid SMARTS.")
                         else:
                             st.error("Please provide both label and SMARTS pattern for the custom functional group.")
-
-                # Filter Background Molecules based on selected functional groups
-                background_smiles = []
-                if selected_fg:
-                    for fg_label in selected_fg:
-                        fg_smarts = functional_groups.get(fg_label)
-                        if fg_smarts:
-                            bg_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts)
-                            background_smiles.extend(bg_smiles)
-                    background_smiles = list(set(background_smiles))  # Remove duplicates
-                    st.write(f"Selected {len(background_smiles)} molecules as background based on functional groups.")
-                else:
-                    background_smiles = []  # Will handle default later
 
                 # **Background Molecule Opacity Control**
                 st.markdown("**Background Molecule Opacity**")
