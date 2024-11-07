@@ -477,7 +477,9 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Background Settings", "Binning", "Peak Detection", "Sonogram"])
+            # Removed "Sonogram" tab by not including it in the tabs list
+            tabs = st.tabs(["Background Settings", "Binning", "Peak Detection"])
+            # If you ever want to add it back, include "Sonogram" in the list
 
             with tabs[0]:
                 st.subheader("Background Settings")
@@ -616,16 +618,6 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            with tabs[3]:
-                st.subheader("Sonogram")
-
-                # Plot Sonogram Checkbox
-                st.session_state['plot_sonogram'] = st.checkbox(
-                    'Plot Sonogram for All Molecules',
-                    value=False,
-                    help="Check to generate a sonogram plot visualizing spectral differences across all molecules."
-                )
-
         # Foreground Molecules Selection (Clean Interface)
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
@@ -758,8 +750,17 @@ with main_col2:
                                     max_peaks=max_peaks
                                 )
 
-                                # Label the detected peaks with yellow background
+                                # Handle overlapping peaks by creating a set of unique wavelengths
+                                unique_peak_wavelengths = {}
                                 for peak in detected_peaks:
+                                    peak_wavelength = x_axis[peak]
+                                    # Round wavelength to one decimal to group similar peaks
+                                    rounded_wavelength = round(peak_wavelength, 1)
+                                    if rounded_wavelength not in unique_peak_wavelengths:
+                                        unique_peak_wavelengths[rounded_wavelength] = peak
+
+                                # Label the detected peaks with yellow background and black text
+                                for rounded_wavelength, peak in unique_peak_wavelengths.items():
                                     peak_wavelength = x_axis[peak]
                                     peak_intensity = normalized_spectra[peak]
                                     ax_spec.plot(peak_wavelength, peak_intensity, "x", color=color)
@@ -769,7 +770,7 @@ with main_col2:
                                         f'{peak_wavelength:.1f} µm',
                                         fontsize=9,
                                         ha='center',
-                                        color=color,
+                                        color='black',  # Set text color to black
                                         bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
                                     )
 
