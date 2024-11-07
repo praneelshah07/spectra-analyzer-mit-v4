@@ -75,35 +75,7 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 if 'user_id' not in st.session_state:
     st.session_state['user_id'] = None
 
-if 'functional_groups_dict' not in st.session_state:
-    # Updated SMARTS patterns to use implicit hydrogens with a more comprehensive list
-    st.session_state['functional_groups_dict'] = {
-        "C-H": "[CH]",
-        "O-H": "[OH]",
-        "N-H": "[NH]",
-        "C=O": "[C]=[O]",
-        "C-O": "[C][O]",
-        "C#N": "[C]#[N]",
-        "S-H": "[SH]",
-        "N=N": "[N]=[N]",
-        "C-S": "[C][S]",
-        "C=N": "[C]=[N]",
-        "P-H": "[PH]",
-        "C=C": "[C]=[C]",
-        "C#C": "[C]#[C]",
-        "N-O": "[N][O]",
-        "C-Cl": "[C][Cl]",
-        "C-Br": "[C][Br]",
-        "C-I": "[C][I]",
-        "C-F": "[C][F]",
-        "O=C-O": "[O][C]=[O]",
-        "N-H-N": "[NH][NH]",
-        "C-C": "[C][C]",
-        "C-N": "[C][N]",
-        "C-Si": "[C][Si]",
-        "C-P": "[C][P]",
-        "C-B": "[C][B]"
-    }
+# Removed 'functional_groups_dict' as it's no longer needed
 
 if 'plot_sonogram' not in st.session_state:
     st.session_state['plot_sonogram'] = False
@@ -129,7 +101,7 @@ elif st.session_state['user_id'] is None:
 
 user_id = st.session_state['user_id']
 
-# Initialize session state for functional groups based on user
+# Initialize session state for functional groups based on user (for Peak Detection labels)
 functional_groups_key = f'{user_id}_functional_groups'
 if functional_groups_key not in st.session_state:
     st.session_state[functional_groups_key] = []
@@ -148,7 +120,6 @@ st.sidebar.markdown("""
         <li><b>Data Loading:</b> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
         <li><b>SMARTS Filtering:</b> Filter molecules based on structural properties using SMARTS patterns.</li>
         <li><b>Advanced Bond Filtering:</b> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
-        <li><b>Background Functional Groups:</b> Select functional groups to designate background molecules.</li>
         <li><b>Background Opacity:</b> Adjust the transparency of background molecules to emphasize foreground data.</li>
         <li><b>Binning Options:</b> Simplify your spectra by binning data points based on wavelength.</li>
         <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
@@ -161,7 +132,6 @@ st.sidebar.markdown("""
         <li><b>Login:</b> Enter your username and click "Login" to access the app.</li>
         <li><b>Data Loading:</b> Choose to use the pre-loaded dataset or upload your own data.</li>
         <li><b>Filtering:</b> Apply SMARTS and/or bond filtering to refine your dataset.</li>
-        <li><b>Background Selection:</b> Select functional groups to designate background molecules or plot all by default.</li>
         <li><b>Adjust Opacity:</b> Set the opacity level for background molecules.</li>
         <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
         <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
@@ -538,30 +508,7 @@ with col1:
                     st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
                     filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
 
-                # Functional Groups for Background Selection
-                st.markdown("**Background Functional Groups**")
-                functional_groups = st.session_state['functional_groups_dict']
-
-                # User selects multiple functional groups
-                selected_fg = st.multiselect(
-                    "Select Functional Groups for Background Molecules:",
-                    options=list(functional_groups.keys()),
-                    default=[],
-                    help="Choose one or more functional groups to designate background molecules based on their structural features."
-                )
-
-                # Filter Background Molecules based on selected functional groups
-                background_smiles = []
-                if selected_fg:
-                    for fg_label in selected_fg:
-                        fg_smarts = functional_groups.get(fg_label)
-                        if fg_smarts:
-                            bg_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts)
-                            background_smiles.extend(bg_smiles)
-                    background_smiles = list(set(background_smiles))  # Remove duplicates
-                    st.write(f"Selected {len(background_smiles)} molecules as background based on functional groups.")
-                else:
-                    background_smiles = []  # Will handle default later
+                # Removed Background Functional Groups Section
 
                 # Background molecule opacity control
                 st.markdown("**Background Molecule Opacity**")
@@ -733,8 +680,10 @@ with main_col2:
                         target_spectra = {}
 
                         # Automatically select all background molecules if none specified
-                        if not background_smiles:
+                        if not filtered_smiles.size:
                             background_smiles = data['SMILES'].unique()
+                        else:
+                            background_smiles = filtered_smiles
 
                         # First plot background molecules
                         for smiles in background_smiles:
