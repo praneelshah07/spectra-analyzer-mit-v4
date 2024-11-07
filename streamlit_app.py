@@ -483,7 +483,7 @@ with col1:
                 st.subheader("Background Settings")
 
                 # SMARTS Filtering
-                st.markdown("**SMARTS Filtering**")
+                st.markdown("**Molecular Filtering**")
                 functional_group_smarts = st.text_input(
                     "Enter a SMARTS pattern to filter background molecules:",
                     value="",  # Display the input box immediately
@@ -495,7 +495,7 @@ with col1:
                     filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
 
                 # Advanced Bond Filtering
-                st.markdown("**Advanced Bond Filtering**")
+                st.markdown("**Functional Group Filtering**")
                 bond_input = st.selectbox(
                     "Select a bond type to filter background molecules:", 
                     ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
