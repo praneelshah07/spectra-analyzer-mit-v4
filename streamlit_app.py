@@ -483,7 +483,7 @@ with col1:
                 st.subheader("Background Settings")
 
                 # SMARTS Filtering
-                st.markdown("**Molecular Filtering**")
+                st.markdown("**SMARTS Filtering**")
                 functional_group_smarts = st.text_input(
                     "Enter a SMARTS pattern to filter background molecules:",
                     value="",  # Display the input box immediately
@@ -495,7 +495,7 @@ with col1:
                     filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
 
                 # Advanced Bond Filtering
-                st.markdown("**Functional Group Filtering**")
+                st.markdown("**Advanced Bond Filtering**")
                 bond_input = st.selectbox(
                     "Select a bond type to filter background molecules:", 
                     ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
@@ -507,8 +507,6 @@ with col1:
                     filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
                     st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
                     filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
-
-                # Removed Background Functional Groups Section
 
                 # Background molecule opacity control
                 st.markdown("**Background Molecule Opacity**")
@@ -631,6 +629,26 @@ with col1:
         # Foreground Molecules Selection (Clean Interface)
         selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
+        # Color Selection for Foreground Molecules
+        if selected_smiles:
+            st.markdown("**Select Colors for Foreground Molecules**")
+            foreground_colors = {}
+            # Define allowed colors excluding black and yellow
+            allowed_colors = [
+                'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+                'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+                'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+                'violet', 'turquoise', 'salmon'
+            ]
+            for smiles in selected_smiles:
+                foreground_colors[smiles] = st.selectbox(
+                    f"Select color for molecule {smiles}",
+                    options=allowed_colors,
+                    key=f"color_{smiles}"
+                )
+        else:
+            foreground_colors = {}
+
         # Confirm button
         confirm_button = st.button('Confirm Selection and Start Plotting')
 
@@ -675,8 +693,14 @@ with main_col2:
                     # Spectra plotting logic
                     if len(selected_smiles) > 0:
                         fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
-                        color_options = ['r', 'g', 'b', 'c', 'm', 'y']
-                        random.shuffle(color_options)
+                        # Define allowed colors for selection
+                        allowed_colors = [
+                            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+                            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+                            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+                            'violet', 'turquoise', 'salmon'
+                        ]
+                        random.shuffle(allowed_colors)  # Shuffle to provide varied color assignments
                         target_spectra = {}
 
                         # Automatically select all background molecules if none specified
@@ -720,8 +744,10 @@ with main_col2:
                             )
                             target_spectra[smiles] = normalized_spectra
 
+                            # Get user-selected color for the molecule
+                            color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
+
                             # Plot foreground molecule
-                            color = color_options[idx % len(color_options)]
                             ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
 
                             if enable_peak_finding:
@@ -732,7 +758,7 @@ with main_col2:
                                     max_peaks=max_peaks
                                 )
 
-                                # Label the detected peaks
+                                # Label the detected peaks with yellow background
                                 for peak in detected_peaks:
                                     peak_wavelength = x_axis[peak]
                                     peak_intensity = normalized_spectra[peak]
@@ -743,7 +769,8 @@ with main_col2:
                                         f'{peak_wavelength:.1f} µm',
                                         fontsize=9,
                                         ha='center',
-                                        color=color
+                                        color=color,
+                                        bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
                                     )
 
                         # Add functional group labels for background gases based on wavelength
