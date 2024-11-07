@@ -75,11 +75,8 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 if 'user_id' not in st.session_state:
     st.session_state['user_id'] = None
 
-if 'functional_groups' not in st.session_state:
-    st.session_state['functional_groups'] = []
-
 if 'functional_groups_dict' not in st.session_state:
-    # Updated SMARTS patterns to use implicit hydrogens
+    # Updated SMARTS patterns to use implicit hydrogens with a more comprehensive list
     st.session_state['functional_groups_dict'] = {
         "C-H": "[CH]",
         "O-H": "[OH]",
@@ -91,7 +88,21 @@ if 'functional_groups_dict' not in st.session_state:
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[PH]"
+        "P-H": "[PH]",
+        "C=C": "[C]=[C]",
+        "C#C": "[C]#[C]",
+        "N-O": "[N][O]",
+        "C-Cl": "[C][Cl]",
+        "C-Br": "[C][Br]",
+        "C-I": "[C][I]",
+        "C-F": "[C][F]",
+        "O=C-O": "[O][C]=[O]",
+        "N-H-N": "[NH][NH]",
+        "C-C": "[C][C]",
+        "C-N": "[C][N]",
+        "C-Si": "[C][Si]",
+        "C-P": "[C][P]",
+        "C-B": "[C][B]"
     }
 
 if 'plot_sonogram' not in st.session_state:
@@ -137,7 +148,7 @@ st.sidebar.markdown("""
         <li><b>Data Loading:</b> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
         <li><b>SMARTS Filtering:</b> Filter molecules based on structural properties using SMARTS patterns.</li>
         <li><b>Advanced Bond Filtering:</b> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
-        <li><b>Background Functional Groups:</b> Select or add functional groups to designate background molecules.</li>
+        <li><b>Background Functional Groups:</b> Select functional groups to designate background molecules.</li>
         <li><b>Background Opacity:</b> Adjust the transparency of background molecules to emphasize foreground data.</li>
         <li><b>Binning Options:</b> Simplify your spectra by binning data points based on wavelength.</li>
         <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
@@ -318,7 +329,19 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[PH]"
+        "P-H": "[PH]",
+        "N-O": "[N][O]",
+        "C-Cl": "[C][Cl]",
+        "C-Br": "[C][Br]",
+        "C-I": "[C][I]",
+        "C-F": "[C][F]",
+        "O=C-O": "[O][C]=[O]",
+        "N-H-N": "[NH][NH]",
+        "C-C": "[C][C]",
+        "C-N": "[C][N]",
+        "C-Si": "[C][Si]",
+        "C-P": "[C][P]",
+        "C-B": "[C][B]"
     }
 
     bond_smarts = bond_patterns.get(bond_pattern, bond_pattern)
@@ -484,46 +507,36 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
+            tabs = st.tabs(["Background Settings", "Binning", "Peak Detection", "Sonogram"])
 
             with tabs[0]:
-                st.subheader("Filters")
+                st.subheader("Background Settings")
 
                 # SMARTS Filtering
-                use_smarts_filter = st.checkbox(
-                    'Apply SMARTS Filtering',
-                    help="Filter molecules based on structural properties using SMARTS patterns."
+                st.markdown("**SMARTS Filtering**")
+                functional_group_smarts = st.text_input(
+                    "Enter a SMARTS pattern to filter background molecules:",
+                    value="",  # Display the input box immediately
+                    help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
                 )
-                if use_smarts_filter:
-                    functional_group_smarts = st.text_input(
-                        "Enter a SMARTS pattern to filter molecules:",
-                        "",
-                        help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
-                    )
-                    if functional_group_smarts:
-                        filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
-                        st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
-                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
+                if functional_group_smarts:
+                    filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
+                    st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
+                    filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
 
                 # Advanced Bond Filtering
-                use_advanced_filter = st.checkbox(
-                    'Apply Advanced Bond Filtering',
-                    help="Refine your dataset by selecting specific bond types (e.g., C-H, O-H)."
+                st.markdown("**Advanced Bond Filtering**")
+                bond_input = st.selectbox(
+                    "Select a bond type to filter background molecules:", 
+                    ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
+                     "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H",
+                     "N-O", "C-Cl", "C-Br", "C-I", "C-F", "O=C-O", "N-H-N", "C-C", "C-N", "C-Si", "C-P", "C-B"],
+                    help="Choose a specific bond type to filter molecules that contain this bond."
                 )
-                if use_advanced_filter:
-                    bond_input = st.selectbox(
-                        "Select a bond type to filter molecules:", 
-                        ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
-                         "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"],
-                        help="Choose a specific bond type to filter molecules that contain this bond."
-                    )
-                    if bond_input and bond_input != "None":
-                        filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
-                        st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
-                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
-
-            with tabs[1]:
-                st.subheader("Background Settings")
+                if bond_input and bond_input != "None":
+                    filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
+                    st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
+                    filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
 
                 # Functional Groups for Background Selection
                 st.markdown("**Background Functional Groups**")
@@ -536,37 +549,6 @@ with col1:
                     default=[],
                     help="Choose one or more functional groups to designate background molecules based on their structural features."
                 )
-
-                # Alternatively, allow user to input SMARTS patterns
-                add_custom_fg = st.checkbox(
-                    "Add Custom Functional Group",
-                    help="Enable to add a custom functional group by providing a label and its SMARTS pattern."
-                )
-                if add_custom_fg:
-                    col_fg1, col_fg2 = st.columns([1, 2])
-                    with col_fg1:
-                        custom_fg_label = st.text_input(
-                            "Custom Functional Group Label:",
-                            key='custom_fg_label',
-                            help="Provide a unique label for the custom functional group."
-                        )
-                    with col_fg2:
-                        custom_fg_smarts = st.text_input(
-                            "Custom Functional Group SMARTS:",
-                            key='custom_fg_smarts',
-                            help="Enter a valid SMARTS pattern that defines the custom functional group."
-                        )
-                    if st.button("Add Custom Functional Group"):
-                        if custom_fg_label and custom_fg_smarts:
-                            # Validate the SMARTS pattern before adding
-                            fg_test = Chem.MolFromSmarts(custom_fg_smarts)
-                            if fg_test:
-                                st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
-                                st.success(f"Added custom functional group: {custom_fg_label}")
-                            else:
-                                st.error("Invalid SMARTS pattern provided. Please enter a valid SMARTS.")
-                        else:
-                            st.error("Please provide both label and SMARTS pattern for the custom functional group.")
 
                 # Filter Background Molecules based on selected functional groups
                 background_smiles = []
@@ -592,7 +574,7 @@ with col1:
                     help="Adjust the transparency of background molecules. Lower values make them more transparent."
                 )
 
-            with tabs[2]:
+            with tabs[1]:
                 st.subheader("Binning Options")
                 bin_type = st.selectbox(
                     'Select binning type:',
@@ -613,7 +595,7 @@ with col1:
                 else:
                     bin_size = None
 
-            with tabs[3]:
+            with tabs[2]:
                 st.subheader("Peak Detection")
 
                 st.markdown("""
@@ -689,7 +671,7 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            with tabs[4]:
+            with tabs[3]:
                 st.subheader("Sonogram")
 
                 # Plot Sonogram Checkbox
