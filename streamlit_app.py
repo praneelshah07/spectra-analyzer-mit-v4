@@ -79,7 +79,7 @@ if 'functional_groups' not in st.session_state:
     st.session_state['functional_groups'] = []
 
 if 'functional_groups_dict' not in st.session_state:
-    # Expanded SMARTS patterns to include more bond types and functional groups
+    # Updated SMARTS patterns to use implicit hydrogens
     st.session_state['functional_groups_dict'] = {
         "C-H": "[CH]",
         "O-H": "[OH]",
@@ -91,19 +91,7 @@ if 'functional_groups_dict' not in st.session_state:
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[PH]",
-        "C=C": "[C]=[C]",
-        "C#C": "[C]#[C]",
-        "C-C": "[C][C]",
-        "C-N": "[C][N]",
-        "C-Si": "[C][Si]",
-        "C-F": "[C][F]",
-        "C-Cl": "[C][Cl]",
-        "C-Br": "[C][Br]",
-        "C-I": "[C][I]",
-        "N-O": "[N][O]",
-        "S-O": "[S][O]",
-        "C-Cl-C": "[C][Cl][C]"
+        "P-H": "[PH]"
     }
 
 if 'plot_sonogram' not in st.session_state:
@@ -147,7 +135,9 @@ st.sidebar.markdown("""
     <h3>App Functionalities:</h3>
     <ul>
         <li><b>Data Loading:</b> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
-        <li><b>Background Functional Groups:</b> Select functional groups to filter and designate background molecules.</li>
+        <li><b>SMARTS Filtering:</b> Filter molecules based on structural properties using SMARTS patterns.</li>
+        <li><b>Advanced Bond Filtering:</b> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
+        <li><b>Background Functional Groups:</b> Select or add functional groups to designate background molecules.</li>
         <li><b>Background Opacity:</b> Adjust the transparency of background molecules to emphasize foreground data.</li>
         <li><b>Binning Options:</b> Simplify your spectra by binning data points based on wavelength.</li>
         <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
@@ -159,7 +149,8 @@ st.sidebar.markdown("""
     <ol>
         <li><b>Login:</b> Enter your username and click "Login" to access the app.</li>
         <li><b>Data Loading:</b> Choose to use the pre-loaded dataset or upload your own data.</li>
-        <li><b>Background Functional Groups:</b> Select functional groups to filter and designate background molecules.</li>
+        <li><b>Filtering:</b> Apply SMARTS and/or bond filtering to refine your dataset.</li>
+        <li><b>Background Selection:</b> Select functional groups to designate background molecules or plot all by default.</li>
         <li><b>Adjust Opacity:</b> Set the opacity level for background molecules.</li>
         <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
         <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
@@ -211,7 +202,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     """
     Function to bin and normalize spectra, with enhanced Q-branch normalization.
     Q-branch normalization is always applied, irrespective of binning.
-
+    
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
     - bin_size: Size of each bin for binning. If None, no binning is performed.
@@ -219,7 +210,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
     - max_peak_limit: Maximum allowed intensity for peaks after normalization.
     - debug: If True, plots peak detection for debugging purposes.
-
+    
     Returns:
     - normalized_spectra: The normalized spectral data.
     - x_axis: The corresponding wavelength axis.
@@ -229,7 +220,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     # Define wavenumber range
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
-
+    
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
         bins = np.arange(wavelength.min(), wavelength.max() + bin_size, bin_size)
@@ -302,14 +293,65 @@ def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
         st.error(f"Error in SMARTS filtering: {e}")
     return filtered_smiles
 
+@st.cache_data
+def advanced_filtering_by_bond(smiles_list, bond_pattern):
+    """
+    Filters molecules based on specific bond patterns.
+    
+    Parameters:
+    - smiles_list: List of SMILES strings.
+    - bond_pattern: Bond pattern to filter molecules (e.g., "C-H", "C=C").
+    
+    Returns:
+    - filtered_smiles: List of SMILES strings that match the bond pattern.
+    """
+    bond_patterns = {
+        "C-H": "[CH]",
+        "C=C": "[C]=[C]",
+        "C#C": "[C]#[C]",
+        "O-H": "[OH]",
+        "N-H": "[NH]",
+        "C=O": "[C]=[O]",
+        "C-O": "[C][O]",
+        "C#N": "[C]#[N]",
+        "S-H": "[SH]",
+        "N=N": "[N]=[N]",
+        "C-S": "[C][S]",
+        "C=N": "[C]=[N]",
+        "P-H": "[PH]"
+    }
+
+    bond_smarts = bond_patterns.get(bond_pattern, bond_pattern)
+
+    try:
+        bond_mol = Chem.MolFromSmarts(bond_smarts)
+        if bond_mol is None:
+            st.error("Invalid bond pattern provided.")
+            return []
+    except Exception as e:
+        st.error(f"Error in bond pattern: {e}")
+        return []
+
+    filtered_smiles = []
+    for smiles in smiles_list:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol:
+            # Add explicit hydrogens to the molecule
+            mol = Chem.AddHs(mol)
+            # Sanitize molecule to calculate implicit valence
+            Chem.SanitizeMol(mol)
+            if mol.HasSubstructMatch(bond_mol):
+                filtered_smiles.append(smiles)
+    return filtered_smiles
+
 def compute_serial_matrix(dist_mat, method="ward"):
     """
     Performs hierarchical clustering on the distance matrix and orders it.
-
+    
     Parameters:
     - dist_mat: Pairwise distance matrix.
     - method: Linkage method for hierarchical clustering.
-
+    
     Returns:
     - ordered_dist_mat: Reordered distance matrix.
     - res_order: Order of the leaves after clustering.
@@ -442,15 +484,48 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Background Gas Settings", "Binning", "Peak Detection", "Sonogram"])
+            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
 
-            # ---------------------------
-            # Background Gas Settings Tab
-            # ---------------------------
             with tabs[0]:
-                st.subheader("Background Gas Settings")
+                st.subheader("Filters")
 
-                # **Background Functional Groups**
+                # SMARTS Filtering
+                use_smarts_filter = st.checkbox(
+                    'Apply SMARTS Filtering',
+                    help="Filter molecules based on structural properties using SMARTS patterns."
+                )
+                if use_smarts_filter:
+                    functional_group_smarts = st.text_input(
+                        "Enter a SMARTS pattern to filter molecules:",
+                        "",
+                        help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
+                    )
+                    if functional_group_smarts:
+                        filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
+                        st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
+                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
+
+                # Advanced Bond Filtering
+                use_advanced_filter = st.checkbox(
+                    'Apply Advanced Bond Filtering',
+                    help="Refine your dataset by selecting specific bond types (e.g., C-H, O-H)."
+                )
+                if use_advanced_filter:
+                    bond_input = st.selectbox(
+                        "Select a bond type to filter molecules:", 
+                        ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
+                         "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"],
+                        help="Choose a specific bond type to filter molecules that contain this bond."
+                    )
+                    if bond_input and bond_input != "None":
+                        filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
+                        st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
+                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
+
+            with tabs[1]:
+                st.subheader("Background Settings")
+
+                # Functional Groups for Background Selection
                 st.markdown("**Background Functional Groups**")
                 functional_groups = st.session_state['functional_groups_dict']
 
@@ -459,25 +534,54 @@ with col1:
                     "Select Functional Groups for Background Molecules:",
                     options=list(functional_groups.keys()),
                     default=[],
-                    help="Choose one or more functional groups to filter and designate background molecules based on their structural features."
+                    help="Choose one or more functional groups to designate background molecules based on their structural features."
                 )
 
-                # **Background Molecule Filtering**
+                # Alternatively, allow user to input SMARTS patterns
+                add_custom_fg = st.checkbox(
+                    "Add Custom Functional Group",
+                    help="Enable to add a custom functional group by providing a label and its SMARTS pattern."
+                )
+                if add_custom_fg:
+                    col_fg1, col_fg2 = st.columns([1, 2])
+                    with col_fg1:
+                        custom_fg_label = st.text_input(
+                            "Custom Functional Group Label:",
+                            key='custom_fg_label',
+                            help="Provide a unique label for the custom functional group."
+                        )
+                    with col_fg2:
+                        custom_fg_smarts = st.text_input(
+                            "Custom Functional Group SMARTS:",
+                            key='custom_fg_smarts',
+                            help="Enter a valid SMARTS pattern that defines the custom functional group."
+                        )
+                    if st.button("Add Custom Functional Group"):
+                        if custom_fg_label and custom_fg_smarts:
+                            # Validate the SMARTS pattern before adding
+                            fg_test = Chem.MolFromSmarts(custom_fg_smarts)
+                            if fg_test:
+                                st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
+                                st.success(f"Added custom functional group: {custom_fg_label}")
+                            else:
+                                st.error("Invalid SMARTS pattern provided. Please enter a valid SMARTS.")
+                        else:
+                            st.error("Please provide both label and SMARTS pattern for the custom functional group.")
+
+                # Filter Background Molecules based on selected functional groups
                 background_smiles = []
                 if selected_fg:
-                    # Initialize background_smiles as all SMILES to perform intersection
-                    background_smiles = set(data['SMILES'].unique())
                     for fg_label in selected_fg:
                         fg_smarts = functional_groups.get(fg_label)
                         if fg_smarts:
-                            bg_smiles = set(filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts))
-                            background_smiles = background_smiles.intersection(bg_smiles)
-                    background_smiles = list(background_smiles)
-                    st.write(f"Selected {len(background_smiles)} molecules as background based on selected functional groups.")
+                            bg_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts)
+                            background_smiles.extend(bg_smiles)
+                    background_smiles = list(set(background_smiles))  # Remove duplicates
+                    st.write(f"Selected {len(background_smiles)} molecules as background based on functional groups.")
                 else:
                     background_smiles = []  # Will handle default later
 
-                # **Background Molecule Opacity Control**
+                # Background molecule opacity control
                 st.markdown("**Background Molecule Opacity**")
                 background_opacity = st.slider(
                     'Set Background Molecule Opacity:',
@@ -488,10 +592,7 @@ with col1:
                     help="Adjust the transparency of background molecules. Lower values make them more transparent."
                 )
 
-            # ---------------------------
-            # Binning Tab
-            # ---------------------------
-            with tabs[1]:
+            with tabs[2]:
                 st.subheader("Binning Options")
                 bin_type = st.selectbox(
                     'Select binning type:',
@@ -512,10 +613,7 @@ with col1:
                 else:
                     bin_size = None
 
-            # ---------------------------
-            # Peak Detection Tab
-            # ---------------------------
-            with tabs[2]:
+            with tabs[3]:
                 st.subheader("Peak Detection")
 
                 st.markdown("""
@@ -591,10 +689,7 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            # ---------------------------
-            # Sonogram Tab
-            # ---------------------------
-            with tabs[3]:
+            with tabs[4]:
                 st.subheader("Sonogram")
 
                 # Plot Sonogram Checkbox
