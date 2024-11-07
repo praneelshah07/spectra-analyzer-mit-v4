@@ -202,7 +202,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     """
     Function to bin and normalize spectra, with enhanced Q-branch normalization.
     Q-branch normalization is always applied, irrespective of binning.
-    
+
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
     - bin_size: Size of each bin for binning. If None, no binning is performed.
@@ -210,7 +210,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
     - max_peak_limit: Maximum allowed intensity for peaks after normalization.
     - debug: If True, plots peak detection for debugging purposes.
-    
+
     Returns:
     - normalized_spectra: The normalized spectral data.
     - x_axis: The corresponding wavelength axis.
@@ -220,7 +220,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     # Define wavenumber range
     wavenumber = np.arange(4000, 500, -1)
     wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
-    
+
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
         bins = np.arange(wavelength.min(), wavelength.max() + bin_size, bin_size)
@@ -484,12 +484,16 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
+            tabs = st.tabs(["Background Gas Settings", "Binning", "Peak Detection", "Sonogram"])
 
+            # ---------------------------
+            # Background Gas Settings Tab
+            # ---------------------------
             with tabs[0]:
-                st.subheader("Filters")
+                st.subheader("Background Gas Settings")
 
-                # SMARTS Filtering
+                # **SMARTS Filtering**
+                st.markdown("**SMARTS Filtering**")
                 use_smarts_filter = st.checkbox(
                     'Apply SMARTS Filtering',
                     help="Filter molecules based on structural properties using SMARTS patterns."
@@ -505,7 +509,8 @@ with col1:
                         st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
                         filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
 
-                # Advanced Bond Filtering
+                # **Advanced Bond Filtering**
+                st.markdown("**Advanced Bond Filtering**")
                 use_advanced_filter = st.checkbox(
                     'Apply Advanced Bond Filtering',
                     help="Refine your dataset by selecting specific bond types (e.g., C-H, O-H)."
@@ -522,10 +527,7 @@ with col1:
                         st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
                         filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
 
-            with tabs[1]:
-                st.subheader("Background Settings")
-
-                # Functional Groups for Background Selection
+                # **Background Functional Groups**
                 st.markdown("**Background Functional Groups**")
                 functional_groups = st.session_state['functional_groups_dict']
 
@@ -581,7 +583,7 @@ with col1:
                 else:
                     background_smiles = []  # Will handle default later
 
-                # Background molecule opacity control
+                # **Background Molecule Opacity Control**
                 st.markdown("**Background Molecule Opacity**")
                 background_opacity = st.slider(
                     'Set Background Molecule Opacity:',
@@ -592,7 +594,10 @@ with col1:
                     help="Adjust the transparency of background molecules. Lower values make them more transparent."
                 )
 
-            with tabs[2]:
+            # ---------------------------
+            # Binning Tab
+            # ---------------------------
+            with tabs[1]:
                 st.subheader("Binning Options")
                 bin_type = st.selectbox(
                     'Select binning type:',
@@ -613,7 +618,10 @@ with col1:
                 else:
                     bin_size = None
 
-            with tabs[3]:
+            # ---------------------------
+            # Peak Detection Tab
+            # ---------------------------
+            with tabs[2]:
                 st.subheader("Peak Detection")
 
                 st.markdown("""
@@ -689,7 +697,10 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            with tabs[4]:
+            # ---------------------------
+            # Sonogram Tab
+            # ---------------------------
+            with tabs[3]:
                 st.subheader("Sonogram")
 
                 # Plot Sonogram Checkbox
