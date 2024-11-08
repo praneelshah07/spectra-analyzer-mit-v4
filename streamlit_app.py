@@ -240,9 +240,10 @@ def bin_and_normalize_spectra(
     """
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
-        bins = np.arange(x_axis.min(), x_axis.max() + bin_size, bin_size)
+        # Corrected binning to prevent extra bin
+        bins = np.arange(x_axis.min(), x_axis.max(), bin_size)
         digitized = np.digitize(x_axis, bins)
-        x_axis_binned = bins[:-1] + bin_size / 2  # Center of bins
+        x_axis_binned = bins + bin_size / 2  # Center of bins
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
@@ -293,7 +294,7 @@ def bin_and_normalize_spectra(
                 normalized_spectra = normalized_spectra / new_max
             else:
                 st.warning("New maximum after Q-branch removal is zero. Unable to renormalize.")
-    
+
     # Detect peaks after normalization
     peaks, properties = detect_peaks(normalized_spectra, sensitivity=q_branch_threshold, max_peaks=int(max_peak_limit * 10))  # Adjust max_peaks as needed
 
@@ -847,7 +848,6 @@ with main_col2:
                             # Define x_axis based on the length of spectra
                             # Correct the wavenumber range to match spectra length
                             # Assuming 'Raw_Spectra_Intensity' has 3500 points
-                            # Adjusted to 3500 points: 4000 to 501 inclusive, step=-1
                             wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Ensure x_axis and spectra have the same length
