@@ -15,7 +15,6 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
-from scipy.ndimage import gaussian_filter1d
 
 # ---------------------------
 # Configuration and Styling
@@ -359,10 +358,6 @@ def compute_serial_matrix(dist_mat, method="ward"):
     ordered_dist_mat = dist_mat[res_order, :][:, res_order]
     return ordered_dist_mat, res_order, res_linkage
 
-# ---------------------------
-# Peak Detection Function
-# ---------------------------
-
 def detect_peaks_in_range(spectra, x_axis, sensitivity=0.5, max_peaks=5):
     """
     Detect peaks in a specified range of the spectrum.
@@ -389,25 +384,18 @@ def detect_peaks_in_range(spectra, x_axis, sensitivity=0.5, max_peaks=5):
 
     return peaks, properties
 
-# ---------------------------
-# Q-Branch Removal Function
-# ---------------------------
-
-def remove_q_branch(spectra, x_axis, peak_wavelength, search_range=0.5, slope_threshold=1.0, gaussian_sigma=5):
+def remove_peak_by_interpolation(spectra, x_axis, peak_wavelength, search_range=0.5):
     """
-    Removes a Q-branch peak from the spectrum by identifying the peak region based on the biggest slope change
-    within a specified range around the peak wavelength and applying Gaussian blending to fill the area.
+    Removes a peak from the spectrum by linear interpolation within a specified range around the peak wavelength.
 
     Parameters:
     - spectra: Normalized spectral intensity data (numpy array).
     - x_axis: Wavelength axis corresponding to the spectra.
-    - peak_wavelength: The central wavelength of the massive peak to remove.
-    - search_range: The range (µm) around the peak_wavelength to search for peak boundaries.
-    - slope_threshold: The minimum slope change to identify peak boundaries.
-    - gaussian_sigma: The sigma value for Gaussian blending.
+    - peak_wavelength: The central wavelength of the peak to remove.
+    - search_range: The range (µm) around the peak_wavelength to search for the peak.
 
     Returns:
-    - modified_spectra: The spectra with the Q-branch peak removed and re-normalized.
+    - modified_spectra: The spectra with the peak removed and re-normalized.
     """
     # Define the search window
     lower_bound = peak_wavelength - search_range
@@ -428,52 +416,39 @@ def remove_q_branch(spectra, x_axis, peak_wavelength, search_range=0.5, slope_th
     sub_spectra = spectra[within_range]
     sub_x_axis = x_axis[within_range]
 
-    # Calculate the first derivative (slope) of the sub-spectrum
-    slope = np.gradient(sub_spectra, sub_x_axis)
-
-    # Identify the point with the maximum absolute slope change
-    peak_idx_within = np.argmax(np.abs(slope))
+    # Identify the peak within the range
+    peak_idx_within = np.argmax(sub_spectra)
     peak_idx = within_range[peak_idx_within]
 
-    # Initialize start and end indices for peak removal
-    start_idx = peak_idx
-    end_idx = peak_idx
+    # Define the region to remove (e.g., ±search_range/2)
+    # Alternatively, you can define a fixed window around the peak
+    removal_width = int(len(sub_spectra) * 0.1)  # Remove 10% of the sub-spectrum around the peak
+    start_idx = max(within_range[0], peak_idx - removal_width)
+    end_idx = min(within_range[-1], peak_idx + removal_width)
 
-    # Identify the start of the peak by moving left until slope exceeds the threshold
-    while start_idx > 0 and slope[peak_idx_within - (peak_idx - start_idx)] > slope_threshold:
-        start_idx -= 1
-        if start_idx < within_range[0]:
-            break
-
-    # Identify the end of the peak by moving right until slope falls below the negative threshold
-    while end_idx < len(spectra)-1 and slope[peak_idx_within + (end_idx - peak_idx)] < -slope_threshold:
-        end_idx += 1
-        if end_idx > within_range[-1]:
-            break
-
-    # If no significant slope changes are found, define a default window around the peak
-    if start_idx == peak_idx and end_idx == peak_idx:
-        window_size = int(0.05 * len(spectra))  # 5% of the spectrum length
-        start_idx = max(0, peak_idx - window_size)
-        end_idx = min(len(spectra)-1, peak_idx + window_size)
-
-    # Apply Gaussian blending to the identified peak region
+    # Perform linear interpolation to remove the peak
     modified_spectra = spectra.copy()
-    blend_region = np.arange(start_idx, end_idx+1)
-    if len(blend_region) > 0:
-        # Create a Gaussian window
-        window = gaussian_filter1d(np.ones_like(blend_region, dtype=float), sigma=gaussian_sigma)
-        window /= window.max()
+    # Points before and after the removal region
+    if start_idx == 0:
+        left_point = spectra[start_idx]
+    else:
+        left_point = spectra[start_idx - 1]
+    if end_idx == len(spectra) - 1:
+        right_point = spectra[end_idx]
+    else:
+        right_point = spectra[end_idx + 1]
 
-        # Blend the region by multiplying with the Gaussian window
-        modified_spectra[start_idx:end_idx+1] = modified_spectra[start_idx:end_idx+1] * window
+    # Linearly interpolate between left_point and right_point over the removal region
+    num_points = end_idx - start_idx + 1
+    interpolated_values = np.linspace(left_point, right_point, num=num_points)
+    modified_spectra[start_idx:end_idx + 1] = interpolated_values
 
     # Re-normalize the entire spectrum to have a maximum of 1.0
     max_intensity = np.max(modified_spectra)
     if max_intensity > 0:
         modified_spectra = modified_spectra / max_intensity
     else:
-        st.warning("After Q-Branch Removal, the spectrum has zero intensity. Unable to normalize.")
+        st.warning("After peak removal, the spectrum has zero intensity. Unable to normalize.")
 
     return modified_spectra
 
@@ -728,24 +703,6 @@ with col1:
                     help="Define the range around the central wavelength to search for peak boundaries."
                 )
 
-                slope_threshold = st.number_input(
-                    "Slope Threshold for Peak Boundary Detection:",
-                    min_value=0.1,
-                    max_value=10.0,
-                    value=1.0,
-                    step=0.1,
-                    help="Define the minimum slope change to identify the boundaries of the peak."
-                )
-
-                gaussian_sigma = st.number_input(
-                    "Gaussian Blending Sigma:",
-                    min_value=1,
-                    max_value=50,
-                    value=5,
-                    step=1,
-                    help="Set the sigma value for Gaussian blending to smoothly fill the removed peak area."
-                )
-
                 # Button to apply Q-Branch Removal
                 apply_q_branch = st.button("Apply Q-Branch Removal")
 
@@ -761,13 +718,11 @@ with col1:
                             max_peak_limit=0.7,
                             debug=False  # Disable debug mode for regular plotting
                         )
-                        modified_spectra = remove_q_branch(
+                        modified_spectra = remove_peak_by_interpolation(
                             normalized_spectra, 
                             x_axis, 
                             peak_wavelength=q_branch_wavelength, 
-                            search_range=search_range,
-                            slope_threshold=slope_threshold, 
-                            gaussian_sigma=gaussian_sigma
+                            search_range=search_range
                         )
                         return modified_spectra
 
@@ -822,44 +777,17 @@ with main_col2:
                 st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
             else:
                 with st.spinner('Generating plots, this may take some time...'):
-                    if st.session_state['plot_sonogram']:
-                        # Sonogram plotting logic
-                        intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)][spectra_column].tolist())
-                        if len(intensity_data) > 1:
-                            try:
-                                dist_mat = squareform(pdist(intensity_data))
-                                ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
-
-                                fig_sono, ax_sono = plt.subplots(figsize=(12, 12))
-                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[4000, 500, len(ordered_dist_mat), 0], cmap='viridis')
-                                ax_sono.set_xlabel("Wavenumber (cm⁻¹)")
-                                ax_sono.set_ylabel("Molecules")
-                                ax_sono.set_title("Sonogram Plot")
-
-                                st.pyplot(fig_sono)
-                                plt.close(fig_sono)
-
-                                # Download button for the sonogram
-                                buf_sono = io.BytesIO()
-                                fig_sono.savefig(buf_sono, format='png')
-                                buf_sono.seek(0)
-                                st.download_button(label="Download Sonogram as PNG", data=buf_sono, file_name="sonogram.png", mime="image/png")
-                            except Exception as e:
-                                st.error(f"Error generating sonogram: {e}")
-                        else:
-                            st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
-
-                    # Spectra plotting logic
+                    # Plotting logic
                     if len(selected_smiles) > 0:
                         fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
                         # Define allowed colors for selection
-                        allowed_colors = [
+                        allowed_colors_plot = [
                             'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
                             'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
                             'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
                             'violet', 'turquoise', 'salmon'
                         ]
-                        random.shuffle(allowed_colors)  # Shuffle to provide varied color assignments
+                        random.shuffle(allowed_colors_plot)  # Shuffle to provide varied color assignments
                         target_spectra = {}
 
                         # Automatically select all background molecules if none specified
@@ -873,18 +801,32 @@ with main_col2:
                             spectra_row = data[data['SMILES'] == smiles]
                             if spectra_row.empty:
                                 continue
-                            spectra = spectra_row.iloc[0][spectra_column]
-                            # Apply binning and normalization
-                            normalized_spectra, x_axis = bin_and_normalize_spectra(
-                                spectra, 
-                                bin_size=bin_size, 
-                                bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
-                                q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                                max_peak_limit=0.7,
-                                debug=False  # Disable debug mode for regular plotting
-                            )
+                            if 'Modified_Spectra' in data.columns:
+                                spectra = spectra_row.iloc[0]['Modified_Spectra']
+                                normalized_spectra, x_axis = bin_and_normalize_spectra(
+                                    spectra, 
+                                    bin_size=bin_size, 
+                                    bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
+                                    q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
+                                    max_peak_limit=0.7,
+                                    debug=False  # Disable debug mode for regular plotting
+                                )
+                                label_suffix = " (Modified)"
+                                color_background = "k"
+                            else:
+                                spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                                normalized_spectra, x_axis = bin_and_normalize_spectra(
+                                    spectra, 
+                                    bin_size=bin_size, 
+                                    bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
+                                    q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
+                                    max_peak_limit=0.7,
+                                    debug=False  # Disable debug mode for regular plotting
+                                )
+                                label_suffix = ""
+                                color_background = "k"
                             # Plot background molecule
-                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
+                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color_background, alpha=background_opacity, label=f"{smiles}{label_suffix}" if label_suffix else "_nolegend_")
 
                         # Then plot foreground molecules to ensure they are on top
                         for idx, smiles in enumerate(selected_smiles):
@@ -979,3 +921,35 @@ with main_col2:
                             mime="image/png"
                         )
                         plt.close(fig_spec)
+
+                        # Optional: Before-and-After Plot for a Sample Molecule
+                        if 'Modified_Spectra' in data.columns and len(selected_smiles) > 0:
+                            sample_smiles = selected_smiles[0]
+                            original_spectra = data[data['SMILES'] == sample_smiles]['Raw_Spectra_Intensity'].values[0]
+                            modified_spectra = data[data['SMILES'] == sample_smiles]['Modified_Spectra'].values[0]
+                            normalized_original, x_axis_original = bin_and_normalize_spectra(
+                                original_spectra,
+                                bin_size=bin_size,
+                                bin_type=bin_type.lower(),
+                                q_branch_threshold=0.3,
+                                max_peak_limit=0.7,
+                                debug=False
+                            )
+                            normalized_modified, x_axis_modified = bin_and_normalize_spectra(
+                                modified_spectra,
+                                bin_size=bin_size,
+                                bin_type=bin_type.lower(),
+                                q_branch_threshold=0.3,
+                                max_peak_limit=0.7,
+                                debug=False
+                            )
+
+                            fig_before_after, ax_before_after = plt.subplots(figsize=(12, 6))
+                            ax_before_after.plot(x_axis_original, normalized_original, label='Original Spectra', alpha=0.7)
+                            ax_before_after.plot(x_axis_modified, normalized_modified, label='Modified Spectra', alpha=0.7)
+                            ax_before_after.set_title(f"Before and After Q-Branch Removal for {sample_smiles}")
+                            ax_before_after.set_xlabel("Wavelength ($\mu$m)")
+                            ax_before_after.set_ylabel("Absorbance (Normalized to 1)")
+                            ax_before_after.legend()
+                            st.pyplot(fig_before_after)
+                            plt.close(fig_before_after)
