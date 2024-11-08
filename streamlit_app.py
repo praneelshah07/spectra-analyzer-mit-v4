@@ -75,6 +75,25 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 if 'user_id' not in st.session_state:
     st.session_state['user_id'] = None
 
+if 'functional_groups' not in st.session_state:
+    st.session_state['functional_groups'] = []
+
+if 'functional_groups_dict' not in st.session_state:
+    # Updated SMARTS patterns to use implicit hydrogens
+    st.session_state['functional_groups_dict'] = {
+        "C-H": "[CH]",
+        "O-H": "[OH]",
+        "N-H": "[NH]",
+        "C=O": "[C]=[O]",
+        "C-O": "[C][O]",
+        "C#N": "[C]#[N]",
+        "S-H": "[SH]",
+        "N=N": "[N]=[N]",
+        "C-S": "[C][S]",
+        "C=N": "[C]=[N]",
+        "P-H": "[PH]"
+    }
+
 if 'plot_sonogram' not in st.session_state:
     st.session_state['plot_sonogram'] = False
 
@@ -83,10 +102,6 @@ if 'peak_finding_enabled' not in st.session_state:
 
 if 'num_peaks' not in st.session_state:
     st.session_state['num_peaks'] = 5
-
-# Initialize session state for Q-branch removals
-if 'q_branch_removals' not in st.session_state:
-    st.session_state['q_branch_removals'] = []
 
 # Simplified authentication: Only username required
 st.sidebar.title("User Login")
@@ -103,7 +118,7 @@ elif st.session_state['user_id'] is None:
 
 user_id = st.session_state['user_id']
 
-# Initialize session state for functional groups based on user (for Peak Detection labels)
+# Initialize session state for functional groups based on user
 functional_groups_key = f'{user_id}_functional_groups'
 if functional_groups_key not in st.session_state:
     st.session_state[functional_groups_key] = []
@@ -122,6 +137,7 @@ st.sidebar.markdown("""
         <li><b>Data Loading:</b> Use the pre-loaded dataset or upload your own CSV/ZIP file containing molecular spectra data.</li>
         <li><b>SMARTS Filtering:</b> Filter molecules based on structural properties using SMARTS patterns.</li>
         <li><b>Advanced Bond Filtering:</b> Refine your dataset by selecting specific bond types (e.g., C-H, O-H).</li>
+        <li><b>Background Functional Groups:</b> Select or add functional groups to designate background molecules.</li>
         <li><b>Background Opacity:</b> Adjust the transparency of background molecules to emphasize foreground data.</li>
         <li><b>Binning Options:</b> Simplify your spectra by binning data points based on wavelength.</li>
         <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
@@ -134,6 +150,7 @@ st.sidebar.markdown("""
         <li><b>Login:</b> Enter your username and click "Login" to access the app.</li>
         <li><b>Data Loading:</b> Choose to use the pre-loaded dataset or upload your own data.</li>
         <li><b>Filtering:</b> Apply SMARTS and/or bond filtering to refine your dataset.</li>
+        <li><b>Background Selection:</b> Select functional groups to designate background molecules or plot all by default.</li>
         <li><b>Adjust Opacity:</b> Set the opacity level for background molecules.</li>
         <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
         <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
@@ -181,110 +198,60 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
-def split_segments(x, y):
+def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_threshold=0.3, max_peak_limit=0.7, debug=False):
     """
-    Split the data into continuous segments where y is not NaN.
-
-    Parameters:
-    - x: numpy array of x-axis values.
-    - y: numpy array of y-axis values.
-
-    Returns:
-    - List of (x_segment, y_segment) tuples.
-    """
-    segments = []
-    current_segment_x = []
-    current_segment_y = []
-
-    for xi, yi in zip(x, y):
-        if not np.isnan(yi):
-            current_segment_x.append(xi)
-            current_segment_y.append(yi)
-        else:
-            if current_segment_x:
-                segments.append((np.array(current_segment_x), np.array(current_segment_y)))
-                current_segment_x = []
-                current_segment_y = []
-    if current_segment_x:
-        segments.append((np.array(current_segment_x), np.array(current_segment_y)))
-    return segments
-
-def bin_and_normalize_spectra(
-    spectra, 
-    x_axis, 
-    bin_size=None, 
-    bin_type='none', 
-    q_branch_threshold=0.3, 
-    max_peak_limit=0.7, 
-    q_branch_removals=None,  # New parameter
-    debug=False
-):
-    """
-    Function to bin and normalize spectra, with Q-branch removal.
-
+    Function to bin and normalize spectra, with enhanced Q-branch normalization.
+    Q-branch normalization is always applied, irrespective of binning.
+    
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
-    - x_axis: Wavelength axis corresponding to spectra (numpy array).
     - bin_size: Size of each bin for binning. If None, no binning is performed.
     - bin_type: Type of binning ('wavelength' or 'none').
     - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
     - max_peak_limit: Maximum allowed intensity for peaks after normalization.
-    - q_branch_removals: List of dictionaries with 'start' and 'end' wavelengths to remove.
     - debug: If True, plots peak detection for debugging purposes.
-
+    
     Returns:
-    - normalized_spectra: The normalized spectral data with Q-branches removed (NaNs).
-    - x_axis_binned: The corresponding wavelength axis after binning.
+    - normalized_spectra: The normalized spectral data.
+    - x_axis: The corresponding wavelength axis.
     - peaks: Indices of detected peaks.
     - properties: Properties of the detected peaks.
     """
+    # Define wavenumber range
+    wavenumber = np.arange(4000, 500, -1)
+    wavelength = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
+    
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
-        bins = np.arange(x_axis.min(), x_axis.max() + bin_size, bin_size)
-        digitized = np.digitize(x_axis, bins)
-        x_axis_binned = bins[:-1] + bin_size / 2  # Center of bins
+        bins = np.arange(wavelength.min(), wavelength.max() + bin_size, bin_size)
+        digitized = np.digitize(wavelength, bins)
+        x_axis = bins[:-1] + bin_size / 2  # Center of bins
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
-            np.mean(spectra[digitized == i]) if np.any(digitized == i) else np.nan 
+            np.mean(spectra[digitized == i]) if np.any(digitized == i) else 0 
             for i in range(1, len(bins))
         ])
     else:
         # No binning; use original spectra
         binned_spectra = spectra.copy()
-        x_axis_binned = x_axis
-
-    # Remove Q-branch regions by setting to NaN
-    if q_branch_removals:
-        for removal in q_branch_removals:
-            start = removal['start']
-            end = removal['end']
-            mask = ~((x_axis_binned >= start) & (x_axis_binned <= end))
-            # Set the y-values in the removal ranges to NaN
-            binned_spectra = np.where(mask, binned_spectra, np.nan)
+        x_axis = wavelength
 
     # Automatic Q-branch normalization
-    # Find the highest peak in the spectrum, ignoring NaNs
-    if np.all(np.isnan(binned_spectra)):
-        st.warning("All spectral data has been removed due to Q-branch removal. Unable to normalize the spectrum.")
-        normalized_spectra = binned_spectra.copy()
-        peaks = []
-        properties = {}
-        return normalized_spectra, x_axis_binned, peaks, properties
-
-    highest_peak_idx = np.nanargmax(binned_spectra)
+    # Find the highest peak in the spectrum
+    highest_peak_idx = np.argmax(binned_spectra)
     highest_peak_intensity = binned_spectra[highest_peak_idx]
 
-    if highest_peak_intensity == 0 or np.isnan(highest_peak_intensity):
-        st.warning("Highest peak intensity is zero or NaN. Unable to normalize the spectrum.")
+    if highest_peak_intensity == 0:
+        st.warning("Highest peak intensity is zero. Unable to normalize the spectrum.")
         normalized_spectra = binned_spectra.copy()
     else:
         normalized_spectra = binned_spectra / highest_peak_intensity
 
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
-        ax_debug.plot(x_axis_binned, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
-        ax_debug.plot(x_axis_binned[highest_peak_idx], binned_spectra[highest_peak_idx], "x", label='Highest Peak')
+        ax_debug.plot(x_axis, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
+        ax_debug.plot(x_axis[highest_peak_idx], binned_spectra[highest_peak_idx], "x", label='Highest Peak')
         ax_debug.set_title("Q-Branch Normalization")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Intensity")
@@ -292,7 +259,7 @@ def bin_and_normalize_spectra(
         st.pyplot(fig_debug)
         plt.close(fig_debug)
 
-    return normalized_spectra, x_axis_binned, highest_peak_idx, highest_peak_intensity
+    return normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity
 
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
@@ -351,19 +318,7 @@ def advanced_filtering_by_bond(smiles_list, bond_pattern):
         "N=N": "[N]=[N]",
         "C-S": "[C][S]",
         "C=N": "[C]=[N]",
-        "P-H": "[PH]",
-        "N-O": "[N][O]",
-        "C-Cl": "[C][Cl]",
-        "C-Br": "[C][Br]",
-        "C-I": "[C][I]",
-        "C-F": "[C][F]",
-        "O=C-O": "[O][C]=[O]",
-        "N-H-N": "[NH][NH]",
-        "C-C": "[C][C]",
-        "C-N": "[C][N]",
-        "C-Si": "[C][Si]",
-        "C-P": "[C][P]",
-        "C-B": "[C][B]"
+        "P-H": "[PH]"
     }
 
     bond_smarts = bond_patterns.get(bond_pattern, bond_pattern)
@@ -526,46 +481,105 @@ with col1:
         # Initialize filtered_smiles with all unique SMILES
         filtered_smiles = data['SMILES'].unique()
 
-        # Determine the overall x-axis range for validation in Q-Branch Removal
-        # Assuming all spectra have the same length and wavelength mapping
-        sample_spectra = data.iloc[0]['Raw_Spectra_Intensity']
-        x_axis_min = 10000 / 4000  # Minimum wavelength corresponding to 4000 cm⁻¹
-        x_axis_max = 10000 / 500   # Maximum wavelength corresponding to 500 cm⁻¹
-
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            tabs = st.tabs(["Background Settings", "Binning", "Peak Detection", "Q-Branch Removal"])
+            tabs = st.tabs(["Filters", "Background Settings", "Binning", "Peak Detection", "Sonogram"])
 
-            # Background Settings Tab
             with tabs[0]:
-                st.subheader("Background Settings")
+                st.subheader("Filters")
 
                 # SMARTS Filtering
-                st.markdown("**SMARTS Filtering**")
-                functional_group_smarts = st.text_input(
-                    "Enter a SMARTS pattern to filter background molecules:",
-                    value="",  # Display the input box immediately
-                    help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
+                use_smarts_filter = st.checkbox(
+                    'Apply SMARTS Filtering',
+                    help="Filter molecules based on structural properties using SMARTS patterns."
                 )
-                if functional_group_smarts:
-                    filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
-                    st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
-                    filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
+                if use_smarts_filter:
+                    functional_group_smarts = st.text_input(
+                        "Enter a SMARTS pattern to filter molecules:",
+                        "",
+                        help="Provide a valid SMARTS pattern to filter molecules that match the specified structural features."
+                    )
+                    if functional_group_smarts:
+                        filtered_smiles_smarts = filter_molecules_by_functional_group(data['SMILES'].unique(), functional_group_smarts)
+                        st.write(f"Filtered dataset to {len(filtered_smiles_smarts)} molecules using SMARTS pattern.")
+                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_smarts)
 
                 # Advanced Bond Filtering
-                st.markdown("**Advanced Bond Filtering**")
-                bond_input = st.selectbox(
-                    "Select a bond type to filter background molecules:", 
-                    ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
-                     "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H",
-                     "N-O", "C-Cl", "C-Br", "C-I", "C-F", "O=C-O", "N-H-N", "C-C", "C-N", "C-Si", "C-P", "C-B"],
-                    help="Choose a specific bond type to filter molecules that contain this bond."
+                use_advanced_filter = st.checkbox(
+                    'Apply Advanced Bond Filtering',
+                    help="Refine your dataset by selecting specific bond types (e.g., C-H, O-H)."
                 )
-                if bond_input and bond_input != "None":
-                    filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
-                    st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
-                    filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
+                if use_advanced_filter:
+                    bond_input = st.selectbox(
+                        "Select a bond type to filter molecules:", 
+                        ["None", "C-H", "C=C", "C#C", "O-H", "N-H", 
+                         "C=O", "C-O", "C#N", "S-H", "N=N", "C-S", "C=N", "P-H"],
+                        help="Choose a specific bond type to filter molecules that contain this bond."
+                    )
+                    if bond_input and bond_input != "None":
+                        filtered_smiles_bond = advanced_filtering_by_bond(data['SMILES'].unique(), bond_input)
+                        st.write(f"Filtered dataset to {len(filtered_smiles_bond)} molecules with bond pattern '{bond_input}'.")
+                        filtered_smiles = np.intersect1d(filtered_smiles, filtered_smiles_bond)
+
+            with tabs[1]:
+                st.subheader("Background Settings")
+
+                # Functional Groups for Background Selection
+                st.markdown("**Background Functional Groups**")
+                functional_groups = st.session_state['functional_groups_dict']
+
+                # User selects multiple functional groups
+                selected_fg = st.multiselect(
+                    "Select Functional Groups for Background Molecules:",
+                    options=list(functional_groups.keys()),
+                    default=[],
+                    help="Choose one or more functional groups to designate background molecules based on their structural features."
+                )
+
+                # Alternatively, allow user to input SMARTS patterns
+                add_custom_fg = st.checkbox(
+                    "Add Custom Functional Group",
+                    help="Enable to add a custom functional group by providing a label and its SMARTS pattern."
+                )
+                if add_custom_fg:
+                    col_fg1, col_fg2 = st.columns([1, 2])
+                    with col_fg1:
+                        custom_fg_label = st.text_input(
+                            "Custom Functional Group Label:",
+                            key='custom_fg_label',
+                            help="Provide a unique label for the custom functional group."
+                        )
+                    with col_fg2:
+                        custom_fg_smarts = st.text_input(
+                            "Custom Functional Group SMARTS:",
+                            key='custom_fg_smarts',
+                            help="Enter a valid SMARTS pattern that defines the custom functional group."
+                        )
+                    if st.button("Add Custom Functional Group"):
+                        if custom_fg_label and custom_fg_smarts:
+                            # Validate the SMARTS pattern before adding
+                            fg_test = Chem.MolFromSmarts(custom_fg_smarts)
+                            if fg_test:
+                                st.session_state['functional_groups_dict'][custom_fg_label] = custom_fg_smarts
+                                st.success(f"Added custom functional group: {custom_fg_label}")
+                            else:
+                                st.error("Invalid SMARTS pattern provided. Please enter a valid SMARTS.")
+                        else:
+                            st.error("Please provide both label and SMARTS pattern for the custom functional group.")
+
+                # Filter Background Molecules based on selected functional groups
+                background_smiles = []
+                if selected_fg:
+                    for fg_label in selected_fg:
+                        fg_smarts = functional_groups.get(fg_label)
+                        if fg_smarts:
+                            bg_smiles = filter_molecules_by_functional_group(data['SMILES'].unique(), fg_smarts)
+                            background_smiles.extend(bg_smiles)
+                    background_smiles = list(set(background_smiles))  # Remove duplicates
+                    st.write(f"Selected {len(background_smiles)} molecules as background based on functional groups.")
+                else:
+                    background_smiles = []  # Will handle default later
 
                 # Background molecule opacity control
                 st.markdown("**Background Molecule Opacity**")
@@ -578,8 +592,7 @@ with col1:
                     help="Adjust the transparency of background molecules. Lower values make them more transparent."
                 )
 
-            # Binning Options Tab
-            with tabs[1]:
+            with tabs[2]:
                 st.subheader("Binning Options")
                 bin_type = st.selectbox(
                     'Select binning type:',
@@ -600,8 +613,7 @@ with col1:
                 else:
                     bin_size = None
 
-            # Peak Detection Tab
-            with tabs[2]:
+            with tabs[3]:
                 st.subheader("Peak Detection")
 
                 st.markdown("""
@@ -677,92 +689,21 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-            # Q-Branch Removal Tab
-            with tabs[3]:
-                st.subheader("Q-Branch Removal")
+            with tabs[4]:
+                st.subheader("Sonogram")
 
-                st.markdown("""
-                Removing the Q-branch helps in eliminating specific peaks that may interfere with your analysis.
-                Specify the wavelength range of the Q-branch you want to remove.
-                """)
+                # Plot Sonogram Checkbox
+                st.session_state['plot_sonogram'] = st.checkbox(
+                    'Plot Sonogram for All Molecules',
+                    value=False,
+                    help="Check to generate a sonogram plot visualizing spectral differences across all molecules."
+                )
 
-                # Form to input Q-branch removal ranges
-                with st.form(key='q_branch_removal_form'):
-                    q_start = st.number_input(
-                        "Start Wavelength (µm)",
-                        min_value=0.0,
-                        max_value=20.0,
-                        value=15.0,
-                        step=0.1,
-                        help="Enter the starting wavelength of the Q-branch to remove."
-                    )
-                    q_end = st.number_input(
-                        "End Wavelength (µm)",
-                        min_value=0.0,
-                        max_value=20.0,
-                        value=16.0,
-                        step=0.1,
-                        help="Enter the ending wavelength of the Q-branch to remove."
-                    )
-                    add_q_branch = st.form_submit_button("Remove Q-Branch")
+        # Foreground Molecules Selection (Clean Interface)
+        selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
-                if add_q_branch:
-                    if q_start >= q_end:
-                        st.error("Start wavelength must be less than end wavelength.")
-                    elif q_start < x_axis_min or q_end > x_axis_max:
-                        st.error(f"Please enter wavelengths within the data range ({x_axis_min:.2f} µm to {x_axis_max:.2f} µm).")
-                    else:
-                        # Check for overlapping ranges
-                        overlap = False
-                        for removal in st.session_state['q_branch_removals']:
-                            if not (q_end < removal['start'] or q_start > removal['end']):
-                                overlap = True
-                                break
-                        if overlap:
-                            st.error("The specified range overlaps with an existing Q-branch removal.")
-                        else:
-                            st.session_state['q_branch_removals'].append({'start': q_start, 'end': q_end})
-                            st.success(f"Removed Q-branch from {q_start} µm to {q_end} µm.")
-
-                # Display current Q-branch removals
-                if st.session_state['q_branch_removals']:
-                    st.markdown("**Current Q-Branch Removals:**")
-                    for i, q in enumerate(st.session_state['q_branch_removals']):
-                        col_start, col_end, col_delete = st.columns([2, 2, 1])
-                        with col_start:
-                            st.write(f"**Start:** {q['start']} µm")
-                        with col_end:
-                            st.write(f"**End:** {q['end']} µm")
-                        with col_delete:
-                            if st.button(f"Delete", key=f"delete_q_branch_{i}"):
-                                st.session_state['q_branch_removals'].pop(i)
-                                st.success(f"Deleted Q-branch removal from {q['start']} µm to {q['end']} µm.")
-
-    # Foreground Molecules Selection (Clean Interface)
-    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
-
-    # Color Selection for Foreground Molecules
-    if selected_smiles:
-        st.markdown("**Select Colors for Foreground Molecules**")
-        foreground_colors = {}
-        # Define allowed colors excluding black and yellow
-        allowed_colors = [
-            'Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Orange',
-            'Purple', 'Pink', 'Brown', 'Lime', 'Maroon',
-            'Navy', 'Teal', 'Olive', 'Coral', 'Gold', 'Indigo',
-            'Violet', 'Turquoise', 'Salmon'
-        ]
-        for smiles in selected_smiles:
-            foreground_colors[smiles] = st.selectbox(
-                f"Select color for molecule {smiles}",
-                options=allowed_colors,
-                key=f"color_{smiles}"
-            )
-    else:
-        foreground_colors = {}
-
-    # Confirm button
-    confirm_button = st.button('Confirm Selection and Start Plotting')
+        # Confirm button
+        confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with main_col2:
     st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
@@ -805,21 +746,13 @@ with main_col2:
                     # Spectra plotting logic
                     if len(selected_smiles) > 0:
                         fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
-                        # Define allowed colors for selection
-                        allowed_colors = [
-                            'Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Orange',
-                            'Purple', 'Pink', 'Brown', 'Lime', 'Maroon',
-                            'Navy', 'Teal', 'Olive', 'Coral', 'Gold', 'Indigo',
-                            'Violet', 'Turquoise', 'Salmon'
-                        ]
-                        random.shuffle(allowed_colors)  # Shuffle to provide varied color assignments
+                        color_options = ['r', 'g', 'b', 'c', 'm', 'y']
+                        random.shuffle(color_options)
                         target_spectra = {}
 
                         # Automatically select all background molecules if none specified
-                        if not filtered_smiles.size:
+                        if not background_smiles:
                             background_smiles = data['SMILES'].unique()
-                        else:
-                            background_smiles = filtered_smiles
 
                         # First plot background molecules
                         for smiles in background_smiles:
@@ -827,21 +760,17 @@ with main_col2:
                             if spectra_row.empty:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                            # Define x_axis based on the length of spectra
-                            x_axis = np.linspace(10000 / 4000, 10000 / 500, len(spectra))  # Convert wavenumber to wavelength
-                            # Apply binning and normalization, including Q-branch removals
-                            normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
+                            # Apply binning and normalization
+                            normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
                                 spectra, 
-                                x_axis=x_axis,
                                 bin_size=bin_size, 
                                 bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
                                 q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
                                 max_peak_limit=0.7,
-                                q_branch_removals=st.session_state['q_branch_removals'],  # Pass the removals
                                 debug=False  # Disable debug mode for regular plotting
                             )
                             # Plot background molecule
-                            ax_spec.fill_between(x_axis_binned, 0, normalized_spectra, color="k", alpha=background_opacity)
+                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity)
 
                         # Then plot foreground molecules to ensure they are on top
                         for idx, smiles in enumerate(selected_smiles):
@@ -849,30 +778,20 @@ with main_col2:
                             if spectra_row.empty:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
-                            # Define x_axis based on the length of spectra
-                            x_axis = np.linspace(10000 / 4000, 10000 / 500, len(spectra))  # Convert wavenumber to wavelength
-                            # Apply binning and normalization, including Q-branch removals
-                            normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
+                            # Apply binning and normalization
+                            normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
                                 spectra, 
-                                x_axis=x_axis,
                                 bin_size=bin_size, 
                                 bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
                                 q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
                                 max_peak_limit=0.7,
-                                q_branch_removals=st.session_state['q_branch_removals'],  # Pass the removals
                                 debug=False  # Disable debug mode for regular plotting
                             )
                             target_spectra[smiles] = normalized_spectra
 
-                            # Get user-selected color for the molecule
-                            color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
-
-                            # Split the data into segments excluding Q-branch ranges
-                            segments = split_segments(x_axis_binned, normalized_spectra)
-
-                            # Plot each segment separately to create gaps
-                            for segment_x, segment_y in segments:
-                                ax_spec.fill_between(segment_x, 0, segment_y, color=color, alpha=0.7, label=smiles)
+                            # Plot foreground molecule
+                            color = color_options[idx % len(color_options)]
+                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
 
                             if enable_peak_finding:
                                 # Detect peaks with simplified parameters
@@ -882,18 +801,9 @@ with main_col2:
                                     max_peaks=max_peaks
                                 )
 
-                                # Handle overlapping peaks by creating a set of unique wavelengths
-                                unique_peak_wavelengths = {}
+                                # Label the detected peaks
                                 for peak in detected_peaks:
-                                    peak_wavelength = x_axis_binned[peak]
-                                    # Round wavelength to one decimal to group similar peaks
-                                    rounded_wavelength = round(peak_wavelength, 1)
-                                    if rounded_wavelength not in unique_peak_wavelengths:
-                                        unique_peak_wavelengths[rounded_wavelength] = peak
-
-                                # Label the detected peaks with yellow background and black text
-                                for rounded_wavelength, peak in unique_peak_wavelengths.items():
-                                    peak_wavelength = x_axis_binned[peak]
+                                    peak_wavelength = x_axis[peak]
                                     peak_intensity = normalized_spectra[peak]
                                     ax_spec.plot(peak_wavelength, peak_intensity, "x", color=color)
                                     ax_spec.text(
@@ -902,8 +812,7 @@ with main_col2:
                                         f'{peak_wavelength:.1f} µm',
                                         fontsize=9,
                                         ha='center',
-                                        color='black',  # Set text color to black
-                                        bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
+                                        color=color
                                     )
 
                         # Add functional group labels for background gases based on wavelength
@@ -914,7 +823,7 @@ with main_col2:
                             ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
                         # Customize plot
-                        ax_spec.set_xlim([x_axis_binned.min(), x_axis_binned.max()])
+                        ax_spec.set_xlim([x_axis.min(), x_axis.max()])
 
                         major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
                         ax_spec.set_xticks(major_ticks)
@@ -928,10 +837,7 @@ with main_col2:
                         ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
                         if selected_smiles:
-                            # Remove duplicate labels in legend
-                            handles, labels = ax_spec.get_legend_handles_labels()
-                            by_label = dict(zip(labels, handles))
-                            ax_spec.legend(by_label.values(), by_label.keys())
+                            ax_spec.legend()
 
                         st.pyplot(fig_spec)
 
