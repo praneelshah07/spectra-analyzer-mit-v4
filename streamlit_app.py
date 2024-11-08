@@ -243,10 +243,9 @@ def bin_and_normalize_spectra(
     """
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
-        # Corrected binning to prevent extra bin
         bins = np.arange(x_axis.min(), x_axis.max(), bin_size)
         digitized = np.digitize(x_axis, bins)
-        x_axis_binned = bins + bin_size / 2  # Center of bins
+        x_axis_binned = bins[:-1] + bin_size / 2  # Center of bins, excluding the last edge
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
@@ -331,6 +330,10 @@ def bin_and_normalize_spectra(
         ax_debug.legend()
         st.pyplot(fig_debug)
         plt.close(fig_debug)
+
+    # Debugging: Check lengths to prevent mismatch
+    if debug:
+        st.write(f"x_axis_binned length: {len(x_axis_binned)}, normalized_spectra length: {len(normalized_spectra)}")
 
     return normalized_spectra, x_axis_binned, peaks, properties
 
@@ -868,8 +871,6 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
-                            # Correct the wavenumber range to match spectra length
-                            # Assuming 'Raw_Spectra_Intensity' has 3500 points
                             wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Ensure x_axis and spectra have the same length
@@ -905,8 +906,6 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
-                            # Correct the wavenumber range to match spectra length
-                            # Assuming 'Raw_Spectra_Intensity' has 3500 points
                             wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Ensure x_axis and spectra have the same length
@@ -985,43 +984,43 @@ with main_col2:
                                         bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
                                     )
 
-                        # Add functional group labels for background gases based on wavelength
-                        for fg in st.session_state[functional_groups_key]:
-                            fg_wavelength = fg['Wavelength']
-                            fg_label = fg['Functional Group']
-                            ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
-                            ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
+        # Add functional group labels for background gases based on wavelength
+        for fg in st.session_state[functional_groups_key]:
+            fg_wavelength = fg['Wavelength']
+            fg_label = fg['Functional Group']
+            ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
+            ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
-                        # Customize plot
-                        ax_spec.set_xlim([x_axis_binned.min(), x_axis_binned.max()])
+        # Customize plot
+        ax_spec.set_xlim([x_axis_binned.min(), x_axis_binned.max()])
 
-                        major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
-                        ax_spec.set_xticks(major_ticks)
-                        ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
+        major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
+        ax_spec.set_xticks(major_ticks)
+        ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
 
-                        ax_spec.tick_params(direction="in",
-                            labelbottom=True, labeltop=False, labelleft=True, labelright=False,
-                            bottom=True, top=True, left=True, right=True)
+        ax_spec.tick_params(direction="in",
+            labelbottom=True, labeltop=False, labelleft=True, labelright=False,
+            bottom=True, top=True, left=True, right=True)
 
-                        ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                        ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+        ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+        ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
-                        if selected_smiles:
-                            # Remove duplicate labels in legend
-                            handles, labels = ax_spec.get_legend_handles_labels()
-                            by_label = dict(zip(labels, handles))
-                            ax_spec.legend(by_label.values(), by_label.keys())
+        if selected_smiles:
+            # Remove duplicate labels in legend
+            handles, labels = ax_spec.get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax_spec.legend(by_label.values(), by_label.keys())
 
-                        st.pyplot(fig_spec)
+        st.pyplot(fig_spec)
 
-                        # Download button for the spectra plot
-                        buf_spec = io.BytesIO()
-                        fig_spec.savefig(buf_spec, format='png')
-                        buf_spec.seek(0)
-                        st.download_button(
-                            label="Download Plot as PNG",
-                            data=buf_spec,
-                            file_name="spectra_plot.png",
-                            mime="image/png"
-                        )
-                        plt.close(fig_spec)
+        # Download button for the spectra plot
+        buf_spec = io.BytesIO()
+        fig_spec.savefig(buf_spec, format='png')
+        buf_spec.seek(0)
+        st.download_button(
+            label="Download Plot as PNG",
+            data=buf_spec,
+            file_name="spectra_plot.png",
+            mime="image/png"
+        )
+        plt.close(fig_spec)
