@@ -450,6 +450,11 @@ def remove_peak_by_interpolation(spectra, x_axis, peak_wavelength, search_range=
     else:
         st.warning("After peak removal, the spectrum has zero intensity. Unable to normalize.")
 
+    # Debugging: Display before and after modification for a sample
+    # Comment out in production
+    # st.write(f"Peak removed between indices {start_idx} and {end_idx}")
+    # st.write(f"Left Point: {left_point}, Right Point: {right_point}")
+
     return modified_spectra
 
 # ---------------------------
@@ -730,91 +735,63 @@ with col1:
                     try:
                         data['Modified_Spectra'] = data.apply(apply_q_branch_removal, axis=1)
                         st.success("Q-Branch Removal applied successfully to all relevant spectra.")
+                        
+                        # Debugging: Show before and after for a sample
+                        sample_index = 0
+                        sample_smiles = data['SMILES'].iloc[sample_index]
+                        st.write(f"**Sample Molecule:** {sample_smiles}")
+                        st.write("**Original Spectrum:**")
+                        st.write(data['Raw_Spectra_Intensity'].iloc[sample_index])
+                        st.write("**Modified Spectrum:**")
+                        st.write(data['Modified_Spectra'].iloc[sample_index])
+                        
                     except Exception as e:
                         st.error(f"Error applying Q-Branch Removal: {e}")
 
-    # Foreground Molecules Selection (Clean Interface)
-    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
+    with main_col2:
+        st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
 
-    # Color Selection for Foreground Molecules
-    if selected_smiles:
-        st.markdown("**Select Colors for Foreground Molecules**")
-        foreground_colors = {}
-        # Define allowed colors excluding black and yellow
-        allowed_colors = [
-            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
-            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
-            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
-            'violet', 'turquoise', 'salmon'
-        ]
-        for smiles in selected_smiles:
-            foreground_colors[smiles] = st.selectbox(
-                f"Select color for molecule {smiles}",
-                options=allowed_colors,
-                key=f"color_{smiles}"
-            )
-    else:
-        foreground_colors = {}
-
-    # Confirm button
-    confirm_button = st.button('Confirm Selection and Start Plotting')
-
-with main_col2:
-    st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
-
-    if confirm_button:
-        if data is None:
-            st.error("No data available to plot.")
-        else:
-            # Determine which spectra to plot: Modified or Original
-            if 'Modified_Spectra' in data.columns:
-                spectra_column = 'Modified_Spectra'
-                st.info("Using modified spectra with Q-Branch Removal applied.")
+        if confirm_button:
+            if data is None:
+                st.error("No data available to plot.")
             else:
-                spectra_column = 'Raw_Spectra_Intensity'
+                # Determine which spectra to plot: Modified or Original
+                if 'Modified_Spectra' in data.columns:
+                    spectra_column = 'Modified_Spectra'
+                    st.info("Using modified spectra with Q-Branch Removal applied.")
+                else:
+                    spectra_column = 'Raw_Spectra_Intensity'
 
-            if (len(selected_smiles) == 0) and (not st.session_state['plot_sonogram']):
-                st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
-            else:
-                with st.spinner('Generating plots, this may take some time...'):
-                    # Plotting logic
-                    if len(selected_smiles) > 0:
-                        fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
-                        # Define allowed colors for selection
-                        allowed_colors_plot = [
-                            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
-                            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
-                            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
-                            'violet', 'turquoise', 'salmon'
-                        ]
-                        random.shuffle(allowed_colors_plot)  # Shuffle to provide varied color assignments
-                        target_spectra = {}
+                if (len(selected_smiles) == 0) and (not st.session_state['plot_sonogram']):
+                    st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
+                else:
+                    with st.spinner('Generating plots, this may take some time...'):
+                        # Plotting logic
+                        if len(selected_smiles) > 0:
+                            fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
+                            # Define allowed colors for selection
+                            allowed_colors_plot = [
+                                'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+                                'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+                                'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+                                'violet', 'turquoise', 'salmon'
+                            ]
+                            random.shuffle(allowed_colors_plot)  # Shuffle to provide varied color assignments
+                            target_spectra = {}
 
-                        # Automatically select all background molecules if none specified
-                        if not filtered_smiles.size:
-                            background_smiles = data['SMILES'].unique()
-                        else:
-                            background_smiles = filtered_smiles
-
-                        # First plot background molecules
-                        for smiles in background_smiles:
-                            spectra_row = data[data['SMILES'] == smiles]
-                            if spectra_row.empty:
-                                continue
-                            if 'Modified_Spectra' in data.columns:
-                                spectra = spectra_row.iloc[0]['Modified_Spectra']
-                                normalized_spectra, x_axis = bin_and_normalize_spectra(
-                                    spectra, 
-                                    bin_size=bin_size, 
-                                    bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
-                                    q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                                    max_peak_limit=0.7,
-                                    debug=False  # Disable debug mode for regular plotting
-                                )
-                                label_suffix = " (Modified)"
-                                color_background = "k"
+                            # Automatically select all background molecules if none specified
+                            if not filtered_smiles.size:
+                                background_smiles = data['SMILES'].unique()
                             else:
-                                spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                                background_smiles = filtered_smiles
+
+                            # First plot background molecules
+                            for smiles in background_smiles:
+                                spectra_row = data[data['SMILES'] == smiles]
+                                if spectra_row.empty:
+                                    continue
+                                spectra = spectra_row.iloc[0][spectra_column]
+                                # Apply binning and normalization
                                 normalized_spectra, x_axis = bin_and_normalize_spectra(
                                     spectra, 
                                     bin_size=bin_size, 
@@ -823,133 +800,131 @@ with main_col2:
                                     max_peak_limit=0.7,
                                     debug=False  # Disable debug mode for regular plotting
                                 )
-                                label_suffix = ""
-                                color_background = "k"
-                            # Plot background molecule
-                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color_background, alpha=background_opacity, label=f"{smiles}{label_suffix}" if label_suffix else "_nolegend_")
+                                # Plot background molecule
+                                ax_spec.fill_between(x_axis, 0, normalized_spectra, color="k", alpha=background_opacity, label="_nolegend_")
 
-                        # Then plot foreground molecules to ensure they are on top
-                        for idx, smiles in enumerate(selected_smiles):
-                            spectra_row = data[data['SMILES'] == smiles]
-                            if spectra_row.empty:
-                                continue
-                            spectra = spectra_row.iloc[0][spectra_column]
-                            # Apply binning and normalization
-                            normalized_spectra, x_axis = bin_and_normalize_spectra(
-                                spectra, 
-                                bin_size=bin_size, 
-                                bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
-                                q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
-                                max_peak_limit=0.7,
-                                debug=False  # Disable debug mode for regular plotting
-                            )
-                            target_spectra[smiles] = normalized_spectra
-
-                            # Get user-selected color for the molecule
-                            color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
-
-                            # Plot foreground molecule
-                            ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
-
-                            if enable_peak_finding:
-                                # Detect peaks with simplified parameters
-                                detected_peaks, detected_properties = detect_peaks_in_range(
-                                    normalized_spectra,
-                                    x_axis,
-                                    sensitivity=peak_sensitivity,
-                                    max_peaks=max_peaks
+                            # Then plot foreground molecules to ensure they are on top
+                            for idx, smiles in enumerate(selected_smiles):
+                                spectra_row = data[data['SMILES'] == smiles]
+                                if spectra_row.empty:
+                                    continue
+                                spectra = spectra_row.iloc[0][spectra_column]
+                                # Apply binning and normalization
+                                normalized_spectra, x_axis = bin_and_normalize_spectra(
+                                    spectra, 
+                                    bin_size=bin_size, 
+                                    bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
+                                    q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
+                                    max_peak_limit=0.7,
+                                    debug=False  # Disable debug mode for regular plotting
                                 )
+                                target_spectra[smiles] = normalized_spectra
 
-                                # Handle overlapping peaks by creating a set of unique wavelengths
-                                unique_peak_wavelengths = {}
-                                for peak in detected_peaks:
-                                    peak_wavelength = x_axis[peak]
-                                    # Round wavelength to one decimal to group similar peaks
-                                    rounded_wavelength = round(peak_wavelength, 1)
-                                    if rounded_wavelength not in unique_peak_wavelengths:
-                                        unique_peak_wavelengths[rounded_wavelength] = peak
+                                # Get user-selected color for the molecule
+                                color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
 
-                                # Label the detected peaks with yellow background and black text
-                                for rounded_wavelength, peak in unique_peak_wavelengths.items():
-                                    peak_wavelength = x_axis[peak]
-                                    peak_intensity = normalized_spectra[peak]
-                                    ax_spec.plot(peak_wavelength, peak_intensity, "x", color=color)
-                                    ax_spec.text(
-                                        peak_wavelength,
-                                        peak_intensity + 0.02,
-                                        f'{peak_wavelength:.1f} µm',
-                                        fontsize=9,
-                                        ha='center',
-                                        color='black',  # Set text color to black
-                                        bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
+                                # Plot foreground molecule
+                                ax_spec.fill_between(x_axis, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
+
+                                if enable_peak_finding:
+                                    # Detect peaks with simplified parameters
+                                    detected_peaks, detected_properties = detect_peaks_in_range(
+                                        normalized_spectra,
+                                        x_axis,
+                                        sensitivity=peak_sensitivity,
+                                        max_peaks=max_peaks
                                     )
 
-                        # Add functional group labels for background gases based on wavelength
-                        for fg in st.session_state[functional_groups_key]:
-                            fg_wavelength = fg['Wavelength']
-                            fg_label = fg['Functional Group']
-                            ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
-                            ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
+                                    # Handle overlapping peaks by creating a set of unique wavelengths
+                                    unique_peak_wavelengths = {}
+                                    for peak in detected_peaks:
+                                        peak_wavelength = x_axis[peak]
+                                        # Round wavelength to one decimal to group similar peaks
+                                        rounded_wavelength = round(peak_wavelength, 1)
+                                        if rounded_wavelength not in unique_peak_wavelengths:
+                                            unique_peak_wavelengths[rounded_wavelength] = peak
 
-                        # Customize plot
-                        ax_spec.set_xlim([x_axis.min(), x_axis.max()])
+                                    # Label the detected peaks with yellow background and black text
+                                    for rounded_wavelength, peak in unique_peak_wavelengths.items():
+                                        peak_wavelength = x_axis[peak]
+                                        peak_intensity = normalized_spectra[peak]
+                                        ax_spec.plot(peak_wavelength, peak_intensity, "x", color=color)
+                                        ax_spec.text(
+                                            peak_wavelength,
+                                            peak_intensity + 0.02,
+                                            f'{peak_wavelength:.1f} µm',
+                                            fontsize=9,
+                                            ha='center',
+                                            color='black',  # Set text color to black
+                                            bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
+                                        )
 
-                        major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
-                        ax_spec.set_xticks(major_ticks)
-                        ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
+                            # Add functional group labels for background gases based on wavelength
+                            for fg in st.session_state[functional_groups_key]:
+                                fg_wavelength = fg['Wavelength']
+                                fg_label = fg['Functional Group']
+                                ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
+                                ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
-                        ax_spec.tick_params(direction="in",
-                            labelbottom=True, labeltop=False, labelleft=True, labelright=False,
-                            bottom=True, top=True, left=True, right=True)
+                            # Customize plot
+                            ax_spec.set_xlim([x_axis.min(), x_axis.max()])
 
-                        ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                        ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+                            major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
+                            ax_spec.set_xticks(major_ticks)
+                            ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
 
-                        if selected_smiles:
-                            ax_spec.legend()
+                            ax_spec.tick_params(direction="in",
+                                labelbottom=True, labeltop=False, labelleft=True, labelright=False,
+                                bottom=True, top=True, left=True, right=True)
 
-                        st.pyplot(fig_spec)
+                            ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+                            ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
-                        # Download button for the spectra plot
-                        buf_spec = io.BytesIO()
-                        fig_spec.savefig(buf_spec, format='png')
-                        buf_spec.seek(0)
-                        st.download_button(
-                            label="Download Plot as PNG",
-                            data=buf_spec,
-                            file_name="spectra_plot.png",
-                            mime="image/png"
-                        )
-                        plt.close(fig_spec)
+                            if selected_smiles:
+                                ax_spec.legend()
 
-                        # Optional: Before-and-After Plot for a Sample Molecule
-                        if 'Modified_Spectra' in data.columns and len(selected_smiles) > 0:
-                            sample_smiles = selected_smiles[0]
-                            original_spectra = data[data['SMILES'] == sample_smiles]['Raw_Spectra_Intensity'].values[0]
-                            modified_spectra = data[data['SMILES'] == sample_smiles]['Modified_Spectra'].values[0]
-                            normalized_original, x_axis_original = bin_and_normalize_spectra(
-                                original_spectra,
-                                bin_size=bin_size,
-                                bin_type=bin_type.lower(),
-                                q_branch_threshold=0.3,
-                                max_peak_limit=0.7,
-                                debug=False
+                            st.pyplot(fig_spec)
+
+                            # Download button for the spectra plot
+                            buf_spec = io.BytesIO()
+                            fig_spec.savefig(buf_spec, format='png')
+                            buf_spec.seek(0)
+                            st.download_button(
+                                label="Download Plot as PNG",
+                                data=buf_spec,
+                                file_name="spectra_plot.png",
+                                mime="image/png"
                             )
-                            normalized_modified, x_axis_modified = bin_and_normalize_spectra(
-                                modified_spectra,
-                                bin_size=bin_size,
-                                bin_type=bin_type.lower(),
-                                q_branch_threshold=0.3,
-                                max_peak_limit=0.7,
-                                debug=False
-                            )
+                            plt.close(fig_spec)
 
-                            fig_before_after, ax_before_after = plt.subplots(figsize=(12, 6))
-                            ax_before_after.plot(x_axis_original, normalized_original, label='Original Spectra', alpha=0.7)
-                            ax_before_after.plot(x_axis_modified, normalized_modified, label='Modified Spectra', alpha=0.7)
-                            ax_before_after.set_title(f"Before and After Q-Branch Removal for {sample_smiles}")
-                            ax_before_after.set_xlabel("Wavelength ($\mu$m)")
-                            ax_before_after.set_ylabel("Absorbance (Normalized to 1)")
-                            ax_before_after.legend()
-                            st.pyplot(fig_before_after)
-                            plt.close(fig_before_after)
+                            # Optional: Before-and-After Plot for a Sample Molecule
+                            if 'Modified_Spectra' in data.columns and len(selected_smiles) > 0:
+                                sample_smiles = selected_smiles[0]
+                                original_spectra = data[data['SMILES'] == sample_smiles]['Raw_Spectra_Intensity'].values[0]
+                                modified_spectra = data[data['SMILES'] == sample_smiles]['Modified_Spectra'].values[0]
+                                normalized_original, x_axis_original = bin_and_normalize_spectra(
+                                    original_spectra,
+                                    bin_size=bin_size,
+                                    bin_type=bin_type.lower(),
+                                    q_branch_threshold=0.3,
+                                    max_peak_limit=0.7,
+                                    debug=False
+                                )
+                                normalized_modified, x_axis_modified = bin_and_normalize_spectra(
+                                    modified_spectra,
+                                    bin_size=bin_size,
+                                    bin_type=bin_type.lower(),
+                                    q_branch_threshold=0.3,
+                                    max_peak_limit=0.7,
+                                    debug=False
+                                )
+
+                                fig_before_after, ax_before_after = plt.subplots(figsize=(12, 6))
+                                ax_before_after.plot(x_axis_original, normalized_original, label='Original Spectra', alpha=0.7)
+                                ax_before_after.plot(x_axis_modified, normalized_modified, label='Modified Spectra', alpha=0.7)
+                                ax_before_after.set_title(f"Before and After Q-Branch Removal for {sample_smiles}")
+                                ax_before_after.set_xlabel("Wavelength ($\mu$m)")
+                                ax_before_after.set_ylabel("Absorbance (Normalized to 1)")
+                                ax_before_after.legend()
+                                st.pyplot(fig_before_after)
+                                plt.close(fig_before_after)
