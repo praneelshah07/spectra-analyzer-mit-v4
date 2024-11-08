@@ -246,7 +246,7 @@ def bin_and_normalize_spectra(
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
-            np.mean(spectra[digitized == i]) if np.any(digitized == i) else np.nan 
+            np.mean(spectra[digitized == i]) if np.any(digitized == i) else 0  # Set empty bins to 0
             for i in range(1, len(bins))
         ])
     else:
@@ -841,8 +841,15 @@ with main_col2:
                                 q_branch_removals=None,  # Do not remove Q-branch from background
                                 debug=False  # Disable debug mode for regular plotting
                             )
-                            # Plot background molecule
-                            ax_spec.fill_between(x_axis_binned, 0, normalized_spectra, color="k", alpha=background_opacity)
+                            # Data Validation Before Plotting
+                            if len(x_axis_binned) != len(normalized_spectra):
+                                st.error(f"Mismatch in lengths: x_axis_binned ({len(x_axis_binned)}) vs normalized_spectra ({len(normalized_spectra)}) for molecule {smiles}.")
+                                continue
+                            else:
+                                if np.any(np.isnan(normalized_spectra)) or np.any(np.isinf(normalized_spectra)):
+                                    st.warning(f"Spectral data contains NaN or Inf values for molecule {smiles}. These will be set to 0 for plotting.")
+                                    normalized_spectra = np.nan_to_num(normalized_spectra, nan=0.0, posinf=0.0, neginf=0.0)
+                                ax_spec.fill_between(x_axis_binned, 0, normalized_spectra, color="k", alpha=background_opacity)
 
                         # Then plot foreground molecules to ensure they are on top
                         for idx, smiles in enumerate(selected_smiles):
@@ -854,7 +861,7 @@ with main_col2:
                             wavenumber = np.arange(4000, 499, -1)
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Apply binning and normalization, including Q-branch removals if enabled
-                            if enable_q_branch and st.session_state['q_branch_removals']:
+                            if st.session_state.get('q_branch_removals') and enable_q_branch:
                                 normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
                                     spectra, 
                                     x_axis=x_axis,
@@ -882,7 +889,7 @@ with main_col2:
                             color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
 
                             # Split the data into segments excluding Q-branch ranges
-                            if enable_q_branch and st.session_state['q_branch_removals']:
+                            if st.session_state.get('q_branch_removals') and enable_q_branch:
                                 segments = split_segments(x_axis_binned, normalized_spectra)
                             else:
                                 segments = [(x_axis_binned, normalized_spectra)]
