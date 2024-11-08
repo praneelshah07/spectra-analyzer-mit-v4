@@ -254,15 +254,6 @@ def bin_and_normalize_spectra(
         binned_spectra = spectra.copy()
         x_axis_binned = x_axis
 
-    # Remove Q-branch regions by setting to NaN
-    if q_branch_removals:
-        for removal in q_branch_removals:
-            start = removal['start']
-            end = removal['end']
-            mask = ~((x_axis_binned >= start) & (x_axis_binned <= end))
-            # Set the y-values in the removal ranges to NaN
-            binned_spectra = np.where(mask, binned_spectra, np.nan)
-
     # Automatic Q-branch normalization
     # Find the highest peak in the spectrum, ignoring NaNs
     if np.all(np.isnan(binned_spectra)):
@@ -281,13 +272,22 @@ def bin_and_normalize_spectra(
     else:
         normalized_spectra = binned_spectra / highest_peak_intensity
 
+    # Remove Q-branch regions by setting to NaN
+    if q_branch_removals:
+        for removal in q_branch_removals:
+            start = removal['start']
+            end = removal['end']
+            mask = ~((x_axis_binned >= start) & (x_axis_binned <= end))
+            # Set the y-values in the removal ranges to NaN
+            normalized_spectra = np.where(mask, normalized_spectra, np.nan)
+
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
-        ax_debug.plot(x_axis_binned, binned_spectra, label='Binned Spectra' if bin_size else 'Original Spectra')
-        ax_debug.plot(x_axis_binned[highest_peak_idx], binned_spectra[highest_peak_idx], "x", label='Highest Peak')
+        ax_debug.plot(x_axis_binned, normalized_spectra, label='Binned and Normalized Spectra' if bin_size else 'Original Spectra')
+        ax_debug.plot(x_axis_binned[highest_peak_idx], normalized_spectra[highest_peak_idx], "x", label='Highest Peak')
         ax_debug.set_title("Q-Branch Normalization")
         ax_debug.set_xlabel("Wavelength (µm)")
-        ax_debug.set_ylabel("Intensity")
+        ax_debug.set_ylabel("Normalized Intensity")
         ax_debug.legend()
         st.pyplot(fig_debug)
         plt.close(fig_debug)
@@ -526,12 +526,6 @@ with col1:
         # Initialize filtered_smiles with all unique SMILES
         filtered_smiles = data['SMILES'].unique()
 
-        # Determine the overall x-axis range for validation in Q-Branch Removal
-        # Assuming all spectra have the same length and wavelength mapping
-        sample_spectra = data.iloc[0]['Raw_Spectra_Intensity']
-        x_axis_min = 10000 / 4000  # Minimum wavelength corresponding to 4000 cm⁻¹
-        x_axis_max = 10000 / 500   # Maximum wavelength corresponding to 500 cm⁻¹
-
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
@@ -698,19 +692,19 @@ with col1:
                     with st.form(key='q_branch_removal_form'):
                         q_start = st.number_input(
                             "Start Wavelength (µm)",
-                            min_value=x_axis_min,
-                            max_value=x_axis_max,
+                            min_value=2.5,  # x_axis_min = 10000 / 4000 = 2.5 µm
+                            max_value=20.0,  # x_axis_max = 10000 / 500 = 20 µm
                             value=15.0,
                             step=0.1,
-                            help=f"Enter the starting wavelength of the Q-branch to remove (within {x_axis_min:.2f} µm to {x_axis_max:.2f} µm)."
+                            help="Enter the starting wavelength of the Q-branch to remove."
                         )
                         q_end = st.number_input(
                             "End Wavelength (µm)",
-                            min_value=x_axis_min,
-                            max_value=x_axis_max,
+                            min_value=2.5,
+                            max_value=20.0,
                             value=16.0,
                             step=0.1,
-                            help=f"Enter the ending wavelength of the Q-branch to remove (within {x_axis_min:.2f} µm to {x_axis_max:.2f} µm)."
+                            help="Enter the ending wavelength of the Q-branch to remove."
                         )
                         add_q_branch = st.form_submit_button("Remove Q-Branch")
 
@@ -753,10 +747,10 @@ with col1:
         foreground_colors = {}
         # Define allowed colors excluding black and yellow
         allowed_colors = [
-            'Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Orange',
-            'Purple', 'Pink', 'Brown', 'Lime', 'Maroon',
-            'Navy', 'Teal', 'Olive', 'Coral', 'Gold', 'Indigo',
-            'Violet', 'Turquoise', 'Salmon'
+            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+            'violet', 'turquoise', 'salmon'
         ]
         for smiles in selected_smiles:
             foreground_colors[smiles] = st.selectbox(
@@ -790,7 +784,7 @@ with main_col2:
                                 ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
 
                                 fig_sono, ax_sono = plt.subplots(figsize=(12, 12))
-                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[10000 / 4000, 10000 / 500, len(ordered_dist_mat), 0], cmap='viridis')
+                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[2.5, 20, len(ordered_dist_mat), 0], cmap='viridis')
                                 ax_sono.set_xlabel("Wavelength (µm)")
                                 ax_sono.set_ylabel("Molecules")
                                 ax_sono.set_title("Sonogram Plot")
@@ -813,10 +807,10 @@ with main_col2:
                         fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
                         # Define allowed colors for selection
                         allowed_colors = [
-                            'Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Orange',
-                            'Purple', 'Pink', 'Brown', 'Lime', 'Maroon',
-                            'Navy', 'Teal', 'Olive', 'Coral', 'Gold', 'Indigo',
-                            'Violet', 'Turquoise', 'Salmon'
+                            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+                            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+                            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+                            'violet', 'turquoise', 'salmon'
                         ]
                         random.shuffle(allowed_colors)  # Shuffle to provide varied color assignments
                         target_spectra = {}
@@ -834,7 +828,8 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
-                            x_axis = np.linspace(10000 / 4000, 10000 / 500, len(spectra))  # Convert wavenumber to wavelength
+                            wavenumber = np.arange(4000, 499, -1)
+                            x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Apply binning and normalization
                             normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
                                 spectra, 
@@ -856,9 +851,10 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
-                            x_axis = np.linspace(10000 / 4000, 10000 / 500, len(spectra))  # Convert wavenumber to wavelength
+                            wavenumber = np.arange(4000, 499, -1)
+                            x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Apply binning and normalization, including Q-branch removals if enabled
-                            if st.session_state['q_branch_removals']:
+                            if enable_q_branch and st.session_state['q_branch_removals']:
                                 normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
                                     spectra, 
                                     x_axis=x_axis,
@@ -886,7 +882,7 @@ with main_col2:
                             color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
 
                             # Split the data into segments excluding Q-branch ranges
-                            if st.session_state['q_branch_removals']:
+                            if enable_q_branch and st.session_state['q_branch_removals']:
                                 segments = split_segments(x_axis_binned, normalized_spectra)
                             else:
                                 segments = [(x_axis_binned, normalized_spectra)]
