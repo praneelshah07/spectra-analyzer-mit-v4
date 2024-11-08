@@ -15,6 +15,7 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
+from scipy.ndimage import gaussian_filter1d  # For optional smoothing
 
 # ---------------------------
 # Configuration and Styling
@@ -217,10 +218,11 @@ def bin_and_normalize_spectra(
     q_branch_threshold=0.3, 
     max_peak_limit=0.7, 
     q_branch_removals=None,  # New parameter
+    interpolate=True,        # New parameter to toggle interpolation
     debug=False
 ):
     """
-    Function to bin and normalize spectra, with Q-branch removal and renormalization.
+    Function to bin and normalize spectra, with Q-branch removal, renormalization, and interpolation.
 
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
@@ -230,10 +232,11 @@ def bin_and_normalize_spectra(
     - q_branch_threshold: Threshold for peak detection in Q-branch normalization.
     - max_peak_limit: Maximum allowed intensity for peaks after normalization.
     - q_branch_removals: List of dictionaries with 'start' and 'end' wavelengths to remove.
+    - interpolate: Boolean indicating whether to interpolate NaN regions.
     - debug: If True, plots peak detection for debugging purposes.
 
     Returns:
-    - normalized_spectra: The normalized spectral data with Q-branches removed and renormalized to 1.
+    - normalized_spectra: The normalized spectral data with Q-branches removed, interpolated, and renormalized to 1.
     - x_axis_binned: The corresponding wavelength axis after binning.
     - peaks: Indices of detected peaks.
     - properties: Properties of the detected peaks.
@@ -295,15 +298,34 @@ def bin_and_normalize_spectra(
             else:
                 st.warning("New maximum after Q-branch removal is zero. Unable to renormalize.")
 
-    # Detect peaks after normalization
+    # Interpolate NaN regions to smooth gaps
+    if interpolate:
+        # Convert to pandas Series for interpolation
+        spectra_series = pd.Series(normalized_spectra, index=x_axis_binned)
+        # Perform linear interpolation
+        spectra_interpolated = spectra_series.interpolate(method='linear', limit_direction='both')
+        # Update normalized_spectra
+        normalized_spectra = spectra_interpolated.values
+
+        if debug:
+            fig_interp, ax_interp = plt.subplots(figsize=(10, 4))
+            ax_interp.plot(x_axis_binned, normalized_spectra, label='Interpolated Spectra')
+            ax_interp.set_title("Spectra After Interpolation")
+            ax_interp.set_xlabel("Wavelength (µm)")
+            ax_interp.set_ylabel("Normalized Intensity")
+            ax_interp.legend()
+            st.pyplot(fig_interp)
+            plt.close(fig_interp)
+
+    # Detect peaks after normalization and interpolation
     peaks, properties = detect_peaks(normalized_spectra, sensitivity=q_branch_threshold, max_peaks=int(max_peak_limit * 10))  # Adjust max_peaks as needed
 
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
-        ax_debug.plot(x_axis_binned, normalized_spectra, label='Binned and Normalized Spectra' if bin_size else 'Original Spectra')
+        ax_debug.plot(x_axis_binned, normalized_spectra, label='Binned, Normalized, and Interpolated Spectra' if bin_size else 'Original Spectra')
         if not np.isnan(normalized_spectra).all():
             ax_debug.plot(x_axis_binned[highest_peak_idx], normalized_spectra[highest_peak_idx], "x", label='Highest Peak')
-        ax_debug.set_title("Q-Branch Normalization and Renormalization")
+        ax_debug.set_title("Q-Branch Normalization, Renormalization, and Interpolation")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Normalized Intensity")
         ax_debug.legend()
@@ -854,7 +876,7 @@ with main_col2:
                             if len(x_axis) != len(spectra):
                                 st.error(f"Length mismatch for molecule {smiles}: x_axis ({len(x_axis)}) vs spectra ({len(spectra)}). Skipping plotting for this molecule.")
                                 continue
-                            # Apply binning and normalization
+                            # Apply binning and normalization with interpolation disabled for background
                             normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
                                 spectra, 
                                 x_axis=x_axis,
@@ -863,6 +885,7 @@ with main_col2:
                                 q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
                                 max_peak_limit=0.7,
                                 q_branch_removals=None,  # Do not remove Q-branch from background
+                                interpolate=False,        # Disable interpolation for background
                                 debug=False  # Disable debug mode for regular plotting
                             )
                             # Data Validation Before Plotting
@@ -900,6 +923,7 @@ with main_col2:
                                     q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
                                     max_peak_limit=0.7,
                                     q_branch_removals=st.session_state['q_branch_removals'],  # Pass the removals
+                                    interpolate=True,         # Enable interpolation for foreground
                                     debug=False  # Disable debug mode for regular plotting
                                 )
                             else:
@@ -911,6 +935,7 @@ with main_col2:
                                     q_branch_threshold=0.3,
                                     max_peak_limit=0.7,
                                     q_branch_removals=None,
+                                    interpolate=True,        # Enable interpolation even if Q-branch removal is not enabled
                                     debug=False
                                 )
                             target_spectra[smiles] = normalized_spectra
