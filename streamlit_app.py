@@ -136,7 +136,7 @@ st.sidebar.markdown("""
         <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
         <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
         <li><b>Functional Group Labels:</b> Add labels to specific wavelengths for easier identification of background gases.</li>
-        <li><b>Q-Branch Removal:</b> Specify the wavelength of massive peaks to remove them from the spectra.</li>
+        <li><b>Q-Branch Removal:</b> Specify the wavelength and range of massive peaks to remove them from the spectra.</li>
         <li><b>Plotting:</b> Select foreground molecules and confirm to generate the plots.</li>
         <li><b>Download:</b> After plotting, download the visualizations as PNG files if desired.</li>
     </ol>
@@ -363,12 +363,13 @@ def compute_serial_matrix(dist_mat, method="ward"):
 # Peak Detection Function
 # ---------------------------
 
-def detect_peaks(spectra, sensitivity=0.5, max_peaks=5):
+def detect_peaks_in_range(spectra, x_axis, sensitivity=0.5, max_peaks=5):
     """
-    Detect peaks in a spectrum using simplified parameters.
+    Detect peaks in a specified range of the spectrum.
 
     Parameters:
     - spectra: Normalized spectral intensity data (numpy array).
+    - x_axis: Wavelength axis corresponding to the spectra.
     - sensitivity: Determines the minimum height and prominence of peaks (float between 0 and 1).
     - max_peaks: Maximum number of peaks to detect.
 
@@ -376,12 +377,8 @@ def detect_peaks(spectra, sensitivity=0.5, max_peaks=5):
     - peaks: Indices of detected peaks.
     - properties: Properties of the detected peaks.
     """
-    # Adjust height and prominence based on sensitivity
-    height = sensitivity
-    prominence = sensitivity
-
     # Detect peaks
-    peaks, properties = find_peaks(spectra, height=height, prominence=prominence)
+    peaks, properties = find_peaks(spectra, height=sensitivity, prominence=sensitivity)
 
     # If more peaks are detected than max_peaks, select the top ones based on prominence
     if len(peaks) > max_peaks:
@@ -396,38 +393,63 @@ def detect_peaks(spectra, sensitivity=0.5, max_peaks=5):
 # Q-Branch Removal Function
 # ---------------------------
 
-def remove_q_branch(spectra, x_axis, peak_wavelength, slope_threshold=1.0, gaussian_sigma=5):
+def remove_q_branch(spectra, x_axis, peak_wavelength, search_range=0.5, slope_threshold=1.0, gaussian_sigma=5):
     """
-    Removes a Q-branch peak from the spectrum by identifying the peak region based on slope changes
-    and applying Gaussian blending to fill the area.
+    Removes a Q-branch peak from the spectrum by identifying the peak region based on the biggest slope change
+    within a specified range around the peak wavelength and applying Gaussian blending to fill the area.
 
     Parameters:
     - spectra: Normalized spectral intensity data (numpy array).
     - x_axis: Wavelength axis corresponding to the spectra.
-    - peak_wavelength: The wavelength of the massive peak to remove.
+    - peak_wavelength: The central wavelength of the massive peak to remove.
+    - search_range: The range (µm) around the peak_wavelength to search for peak boundaries.
     - slope_threshold: The minimum slope change to identify peak boundaries.
     - gaussian_sigma: The sigma value for Gaussian blending.
 
     Returns:
     - modified_spectra: The spectra with the Q-branch peak removed and re-normalized.
     """
-    # Calculate the first derivative (slope) of the spectra
-    slope = np.gradient(spectra, x_axis)
+    # Define the search window
+    lower_bound = peak_wavelength - search_range
+    upper_bound = peak_wavelength + search_range
 
-    # Find the index closest to the specified peak wavelength
-    peak_idx = np.argmin(np.abs(x_axis - peak_wavelength))
+    # Ensure bounds are within the x_axis range
+    lower_bound = max(x_axis.min(), lower_bound)
+    upper_bound = min(x_axis.max(), upper_bound)
+
+    # Find indices within the search range
+    within_range = np.where((x_axis >= lower_bound) & (x_axis <= upper_bound))[0]
+
+    if len(within_range) == 0:
+        st.warning("Specified peak wavelength range is out of bounds.")
+        return spectra.copy()
+
+    # Extract the sub-spectrum within the range
+    sub_spectra = spectra[within_range]
+    sub_x_axis = x_axis[within_range]
+
+    # Calculate the first derivative (slope) of the sub-spectrum
+    slope = np.gradient(sub_spectra, sub_x_axis)
+
+    # Identify the point with the maximum absolute slope change
+    peak_idx_within = np.argmax(np.abs(slope))
+    peak_idx = within_range[peak_idx_within]
 
     # Initialize start and end indices for peak removal
     start_idx = peak_idx
     end_idx = peak_idx
 
     # Identify the start of the peak by moving left until slope exceeds the threshold
-    while start_idx > 0 and slope[start_idx] > slope_threshold:
+    while start_idx > 0 and slope[peak_idx_within - (peak_idx - start_idx)] > slope_threshold:
         start_idx -= 1
+        if start_idx < within_range[0]:
+            break
 
     # Identify the end of the peak by moving right until slope falls below the negative threshold
-    while end_idx < len(slope)-1 and slope[end_idx] < -slope_threshold:
+    while end_idx < len(spectra)-1 and slope[peak_idx_within + (end_idx - peak_idx)] < -slope_threshold:
         end_idx += 1
+        if end_idx > within_range[-1]:
+            break
 
     # If no significant slope changes are found, define a default window around the peak
     if start_idx == peak_idx and end_idx == peak_idx:
@@ -683,20 +705,29 @@ with col1:
                 st.subheader("Q-Branch Removal")
 
                 st.markdown("""
-                **Q-Branch Removal** allows you to remove massive peaks from the spectra for cleaner visualization. Specify the wavelength of the peak you wish to remove, and the app will process the spectra accordingly.
+                **Q-Branch Removal** allows you to remove massive peaks from the spectra for cleaner visualization. Specify the central wavelength and the range around it to focus the peak removal process.
                 """)
 
                 # User input for Q-Branch Removal
                 q_branch_wavelength = st.number_input(
-                    "Enter the Wavelength of the Massive Peak to Remove (µm):",
+                    "Enter the Central Wavelength of the Massive Peak to Remove (µm):",
                     min_value=3.0,
                     max_value=20.0,
                     value=15.0,
                     step=0.1,
-                    help="Specify the wavelength position of the massive peak you want to remove from the spectra."
+                    help="Specify the central wavelength position of the massive peak you want to remove from the spectra."
                 )
 
-                # Additional parameters for slope detection and blending
+                # Additional parameters for peak removal
+                search_range = st.number_input(
+                    "Enter the Range around the Peak Wavelength to Search (µm):",
+                    min_value=0.1,
+                    max_value=5.0,
+                    value=0.5,
+                    step=0.1,
+                    help="Define the range around the central wavelength to search for peak boundaries."
+                )
+
                 slope_threshold = st.number_input(
                     "Slope Threshold for Peak Boundary Detection:",
                     min_value=0.1,
@@ -734,6 +765,7 @@ with col1:
                             normalized_spectra, 
                             x_axis, 
                             peak_wavelength=q_branch_wavelength, 
+                            search_range=search_range,
                             slope_threshold=slope_threshold, 
                             gaussian_sigma=gaussian_sigma
                         )
@@ -879,8 +911,9 @@ with main_col2:
 
                             if enable_peak_finding:
                                 # Detect peaks with simplified parameters
-                                detected_peaks, detected_properties = detect_peaks(
+                                detected_peaks, detected_properties = detect_peaks_in_range(
                                     normalized_spectra,
+                                    x_axis,
                                     sensitivity=peak_sensitivity,
                                     max_peaks=max_peaks
                                 )
