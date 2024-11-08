@@ -220,7 +220,7 @@ def bin_and_normalize_spectra(
     debug=False
 ):
     """
-    Function to bin and normalize spectra, with Q-branch removal and renormalization.
+    Function to bin and normalize spectra, with Q-branch removal.
 
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
@@ -233,17 +233,16 @@ def bin_and_normalize_spectra(
     - debug: If True, plots peak detection for debugging purposes.
 
     Returns:
-    - normalized_spectra: The normalized spectral data with Q-branches removed and renormalized to 1.
+    - normalized_spectra: The normalized spectral data with Q-branches removed (NaNs).
     - x_axis_binned: The corresponding wavelength axis after binning.
     - peaks: Indices of detected peaks.
     - properties: Properties of the detected peaks.
     """
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
-        # Corrected binning to prevent extra bin
-        bins = np.arange(x_axis.min(), x_axis.max(), bin_size)
+        bins = np.arange(x_axis.min(), x_axis.max() + bin_size, bin_size)
         digitized = np.digitize(x_axis, bins)
-        x_axis_binned = bins + bin_size / 2  # Center of bins
+        x_axis_binned = bins[:-1] + bin_size / 2  # Center of bins
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
@@ -282,35 +281,18 @@ def bin_and_normalize_spectra(
             # Set the y-values in the removal ranges to NaN
             normalized_spectra = np.where(mask, normalized_spectra, np.nan)
 
-    # Renormalize after Q-branch removal
-    if q_branch_removals:
-        # Find the new maximum excluding NaNs
-        if np.all(np.isnan(normalized_spectra)):
-            st.warning("All spectral data has been removed after Q-branch removal. Unable to renormalize.")
-            # Optionally, set all to 0 or handle as needed
-        else:
-            new_max = np.nanmax(normalized_spectra)
-            if new_max > 0:
-                normalized_spectra = normalized_spectra / new_max
-            else:
-                st.warning("New maximum after Q-branch removal is zero. Unable to renormalize.")
-
-    # Detect peaks after normalization
-    peaks, properties = detect_peaks(normalized_spectra, sensitivity=q_branch_threshold, max_peaks=int(max_peak_limit * 10))  # Adjust max_peaks as needed
-
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
         ax_debug.plot(x_axis_binned, normalized_spectra, label='Binned and Normalized Spectra' if bin_size else 'Original Spectra')
-        if not np.isnan(normalized_spectra).all():
-            ax_debug.plot(x_axis_binned[highest_peak_idx], normalized_spectra[highest_peak_idx], "x", label='Highest Peak')
-        ax_debug.set_title("Q-Branch Normalization and Renormalization")
+        ax_debug.plot(x_axis_binned[highest_peak_idx], normalized_spectra[highest_peak_idx], "x", label='Highest Peak')
+        ax_debug.set_title("Q-Branch Normalization")
         ax_debug.set_xlabel("Wavelength (µm)")
         ax_debug.set_ylabel("Normalized Intensity")
         ax_debug.legend()
         st.pyplot(fig_debug)
         plt.close(fig_debug)
 
-    return normalized_spectra, x_axis_binned, peaks, properties
+    return normalized_spectra, x_axis_binned, highest_peak_idx, highest_peak_intensity
 
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
@@ -883,7 +865,6 @@ with main_col2:
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
                             # Correct the wavenumber range to match spectra length
-                            # Assuming 'Raw_Spectra_Intensity' has 3500 points
                             wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Ensure x_axis and spectra have the same length
