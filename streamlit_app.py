@@ -15,6 +15,7 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import uuid
+from scipy.ndimage import gaussian_filter1d
 
 # ---------------------------
 # Configuration and Styling
@@ -124,6 +125,7 @@ st.sidebar.markdown("""
         <li><b>Binning Options:</b> Simplify your spectra by binning data points based on wavelength.</li>
         <li><b>Peak Detection:</b> Enable and configure peak detection parameters to identify significant spectral features.</li>
         <li><b>Functional Group Labels:</b> Add labels to specific wavelengths to identify background gases.</li>
+        <li><b>Q-Branch Removal:</b> Remove massive peaks from the spectra for cleaner visualization.</li>
         <li><b>Sonogram Plot:</b> Generate a comprehensive sonogram plot to visualize spectral differences across compounds.</li>
     </ul>
     
@@ -136,6 +138,7 @@ st.sidebar.markdown("""
         <li><b>Binning:</b> Choose binning options to simplify your spectra visualization.</li>
         <li><b>Peak Detection:</b> Enable peak detection and configure parameters for accurate feature identification.</li>
         <li><b>Functional Group Labels:</b> Add labels to specific wavelengths for easier identification of background gases.</li>
+        <li><b>Q-Branch Removal:</b> Specify the wavelength of massive peaks to remove them from the spectra.</li>
         <li><b>Plotting:</b> Select foreground molecules and confirm to generate the plots.</li>
         <li><b>Download:</b> After plotting, download the visualizations as PNG files if desired.</li>
     </ol>
@@ -394,6 +397,62 @@ def detect_peaks(spectra, sensitivity=0.5, max_peaks=5):
     return peaks, properties
 
 # ---------------------------
+# Q-Branch Removal Function
+# ---------------------------
+
+def remove_q_branch(spectra, x_axis, peak_wavelength, slope_threshold=1.0, gaussian_sigma=5):
+    """
+    Removes a Q-branch peak from the spectrum by identifying the peak region based on slope changes
+    and applying Gaussian blending to fill the area.
+
+    Parameters:
+    - spectra: Normalized spectral intensity data (numpy array).
+    - x_axis: Wavelength axis corresponding to the spectra.
+    - peak_wavelength: The wavelength of the massive peak to remove.
+    - slope_threshold: The minimum slope change to identify peak boundaries.
+    - gaussian_sigma: The sigma value for Gaussian blending.
+
+    Returns:
+    - modified_spectra: The spectra with the Q-branch peak removed.
+    """
+    # Calculate the first derivative (slope) of the spectra
+    slope = np.gradient(spectra, x_axis)
+
+    # Find the index closest to the specified peak wavelength
+    peak_idx = np.argmin(np.abs(x_axis - peak_wavelength))
+
+    # Initialize start and end indices for peak removal
+    start_idx = peak_idx
+    end_idx = peak_idx
+
+    # Identify the start of the peak by moving left until slope increases beyond the threshold
+    while start_idx > 0 and slope[start_idx] > slope_threshold:
+        start_idx -= 1
+
+    # Identify the end of the peak by moving right until slope decreases below the threshold
+    while end_idx < len(slope)-1 and slope[end_idx] < -slope_threshold:
+        end_idx += 1
+
+    # If no significant slope changes are found, define a default window around the peak
+    if start_idx == peak_idx and end_idx == peak_idx:
+        window_size = int(0.05 * len(spectra))  # 5% of the spectrum length
+        start_idx = max(0, peak_idx - window_size)
+        end_idx = min(len(spectra)-1, peak_idx + window_size)
+
+    # Apply Gaussian blending to the identified peak region
+    modified_spectra = spectra.copy()
+    blend_region = np.arange(start_idx, end_idx+1)
+    if len(blend_region) > 0:
+        # Create a Gaussian window
+        window = gaussian_filter1d(np.ones_like(blend_region, dtype=float), sigma=gaussian_sigma)
+        window /= window.max()
+
+        # Blend the region by multiplying with the Gaussian window
+        modified_spectra[start_idx:end_idx+1] = modified_spectra[start_idx:end_idx+1] * window
+
+    return modified_spectra
+
+# ---------------------------
 # Streamlit Layout
 # ---------------------------
 
@@ -477,9 +536,8 @@ with col1:
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            # Removed "Sonogram" tab by not including it in the tabs list
-            tabs = st.tabs(["Background Settings", "Binning", "Peak Detection"])
-            # If you ever want to add it back, include "Sonogram" in the list
+            # Added "Q-Branch Removal" tab
+            tabs = st.tabs(["Background Settings", "Binning", "Peak Detection", "Q-Branch Removal"])
 
             with tabs[0]:
                 st.subheader("Background Settings")
@@ -618,31 +676,98 @@ with col1:
                                     st.session_state[functional_groups_key].pop(i)
                                     st.success(f"Deleted functional group: {fg['Functional Group']}")
 
-        # Foreground Molecules Selection (Clean Interface)
-        selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
+            with tabs[3]:
+                st.subheader("Q-Branch Removal")
 
-        # Color Selection for Foreground Molecules
-        if selected_smiles:
-            st.markdown("**Select Colors for Foreground Molecules**")
-            foreground_colors = {}
-            # Define allowed colors excluding black and yellow
-            allowed_colors = [
-                'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
-                'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
-                'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
-                'violet', 'turquoise', 'salmon'
-            ]
-            for smiles in selected_smiles:
-                foreground_colors[smiles] = st.selectbox(
-                    f"Select color for molecule {smiles}",
-                    options=allowed_colors,
-                    key=f"color_{smiles}"
+                st.markdown("""
+                **Q-Branch Removal** allows you to remove massive peaks from the spectra for cleaner visualization. Specify the wavelength of the peak you wish to remove, and the app will process the spectra accordingly.
+                """)
+
+                # User input for Q-Branch Removal
+                q_branch_wavelength = st.number_input(
+                    "Enter the Wavelength of the Massive Peak to Remove (µm):",
+                    min_value=3.0,
+                    max_value=20.0,
+                    value=15.0,
+                    step=0.1,
+                    help="Specify the wavelength position of the massive peak you want to remove from the spectra."
                 )
-        else:
-            foreground_colors = {}
 
-        # Confirm button
-        confirm_button = st.button('Confirm Selection and Start Plotting')
+                # Additional parameters for slope detection and blending
+                slope_threshold = st.number_input(
+                    "Slope Threshold for Peak Boundary Detection:",
+                    min_value=0.1,
+                    max_value=10.0,
+                    value=1.0,
+                    step=0.1,
+                    help="Define the minimum slope change to identify the boundaries of the peak."
+                )
+
+                gaussian_sigma = st.number_input(
+                    "Gaussian Blending Sigma:",
+                    min_value=1,
+                    max_value=50,
+                    value=5,
+                    step=1,
+                    help="Set the sigma value for Gaussian blending to smoothly fill the removed peak area."
+                )
+
+                # Button to apply Q-Branch Removal
+                apply_q_branch = st.button("Apply Q-Branch Removal")
+
+                if apply_q_branch:
+                    # Apply Q-Branch Removal to all spectra
+                    def apply_q_branch_removal(row):
+                        spectra = row['Raw_Spectra_Intensity']
+                        normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
+                            spectra, 
+                            bin_size=bin_size, 
+                            bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
+                            q_branch_threshold=0.3,  # Fixed threshold for automatic normalization
+                            max_peak_limit=0.7,
+                            debug=False  # Disable debug mode for regular plotting
+                        )
+                        modified_spectra = remove_q_branch(
+                            normalized_spectra, 
+                            x_axis, 
+                            peak_wavelength=q_branch_wavelength, 
+                            slope_threshold=slope_threshold, 
+                            gaussian_sigma=gaussian_sigma
+                        )
+                        return modified_spectra
+
+                    # Apply the Q-Branch Removal
+                    try:
+                        data['Modified_Spectra'] = data.apply(apply_q_branch_removal, axis=1)
+                        st.success("Q-Branch Removal applied successfully to all relevant spectra.")
+                    except Exception as e:
+                        st.error(f"Error applying Q-Branch Removal: {e}")
+
+    # Foreground Molecules Selection (Clean Interface)
+    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
+
+    # Color Selection for Foreground Molecules
+    if selected_smiles:
+        st.markdown("**Select Colors for Foreground Molecules**")
+        foreground_colors = {}
+        # Define allowed colors excluding black and yellow
+        allowed_colors = [
+            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+            'violet', 'turquoise', 'salmon'
+        ]
+        for smiles in selected_smiles:
+            foreground_colors[smiles] = st.selectbox(
+                f"Select color for molecule {smiles}",
+                options=allowed_colors,
+                key=f"color_{smiles}"
+            )
+    else:
+        foreground_colors = {}
+
+    # Confirm button
+    confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with main_col2:
     st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
@@ -651,13 +776,19 @@ with main_col2:
         if data is None:
             st.error("No data available to plot.")
         else:
+            # Determine which spectra to plot: Modified or Original
+            if 'Modified_Spectra' in data.columns:
+                spectra_column = 'Modified_Spectra'
+            else:
+                spectra_column = 'Raw_Spectra_Intensity'
+
             if (len(selected_smiles) == 0) and (not st.session_state['plot_sonogram']):
                 st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
             else:
                 with st.spinner('Generating plots, this may take some time...'):
                     if st.session_state['plot_sonogram']:
                         # Sonogram plotting logic
-                        intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
+                        intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)][spectra_column].tolist())
                         if len(intensity_data) > 1:
                             try:
                                 dist_mat = squareform(pdist(intensity_data))
@@ -706,7 +837,7 @@ with main_col2:
                             spectra_row = data[data['SMILES'] == smiles]
                             if spectra_row.empty:
                                 continue
-                            spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                            spectra = spectra_row.iloc[0][spectra_column]
                             # Apply binning and normalization
                             normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
                                 spectra, 
@@ -724,7 +855,7 @@ with main_col2:
                             spectra_row = data[data['SMILES'] == smiles]
                             if spectra_row.empty:
                                 continue
-                            spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
+                            spectra = spectra_row.iloc[0][spectra_column]
                             # Apply binning and normalization
                             normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
                                 spectra, 
