@@ -828,8 +828,14 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
-                            wavenumber = np.arange(4000, 499, -1)
+                            # Correct the wavenumber range to match spectra length
+                            # Assuming 'Raw_Spectra_Intensity' has 3500 points
+                            wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
+                            # Ensure x_axis and spectra have the same length
+                            if len(x_axis) != len(spectra):
+                                st.error(f"Length mismatch for molecule {smiles}: x_axis ({len(x_axis)}) vs spectra ({len(spectra)}). Skipping plotting for this molecule.")
+                                continue
                             # Apply binning and normalization
                             normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
                                 spectra, 
@@ -858,8 +864,13 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
-                            wavenumber = np.arange(4000, 499, -1)
+                            # Correct the wavenumber range to match spectra length
+                            wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
+                            # Ensure x_axis and spectra have the same length
+                            if len(x_axis) != len(spectra):
+                                st.error(f"Length mismatch for molecule {smiles}: x_axis ({len(x_axis)}) vs spectra ({len(spectra)}). Skipping plotting for this molecule.")
+                                continue
                             # Apply binning and normalization, including Q-branch removals if enabled
                             if st.session_state.get('q_branch_removals') and enable_q_branch:
                                 normalized_spectra, x_axis_binned, _, _ = bin_and_normalize_spectra(
