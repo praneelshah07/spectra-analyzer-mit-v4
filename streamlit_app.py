@@ -181,6 +181,34 @@ def load_data_from_zip(zip_url):
 # Spectra Processing Functions
 # ---------------------------
 
+def split_segments(x, y):
+    """
+    Split the data into continuous segments where y is not NaN.
+
+    Parameters:
+    - x: numpy array of x-axis values.
+    - y: numpy array of y-axis values.
+
+    Returns:
+    - List of (x_segment, y_segment) tuples.
+    """
+    segments = []
+    current_segment_x = []
+    current_segment_y = []
+
+    for xi, yi in zip(x, y):
+        if not np.isnan(yi):
+            current_segment_x.append(xi)
+            current_segment_y.append(yi)
+        else:
+            if current_segment_x:
+                segments.append((np.array(current_segment_x), np.array(current_segment_y)))
+                current_segment_x = []
+                current_segment_y = []
+    if current_segment_x:
+        segments.append((np.array(current_segment_x), np.array(current_segment_y)))
+    return segments
+
 def bin_and_normalize_spectra(
     spectra, 
     x_axis, 
@@ -192,8 +220,8 @@ def bin_and_normalize_spectra(
     debug=False
 ):
     """
-    Function to bin and normalize spectra, with enhanced Q-branch normalization and Q-branch removal.
-    
+    Function to bin and normalize spectra, with Q-branch removal.
+
     Parameters:
     - spectra: Raw spectral intensity data (numpy array).
     - x_axis: Wavelength axis corresponding to spectra (numpy array).
@@ -203,10 +231,10 @@ def bin_and_normalize_spectra(
     - max_peak_limit: Maximum allowed intensity for peaks after normalization.
     - q_branch_removals: List of dictionaries with 'start' and 'end' wavelengths to remove.
     - debug: If True, plots peak detection for debugging purposes.
-    
+
     Returns:
-    - normalized_spectra: The normalized spectral data.
-    - x_axis: The corresponding wavelength axis.
+    - normalized_spectra: The normalized spectral data with Q-branches removed (NaNs).
+    - x_axis_binned: The corresponding wavelength axis after binning.
     - peaks: Indices of detected peaks.
     - properties: Properties of the detected peaks.
     """
@@ -218,7 +246,7 @@ def bin_and_normalize_spectra(
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
-            np.mean(spectra[digitized == i]) if np.any(digitized == i) else 0 
+            np.mean(spectra[digitized == i]) if np.any(digitized == i) else np.nan 
             for i in range(1, len(bins))
         ])
     else:
@@ -226,21 +254,29 @@ def bin_and_normalize_spectra(
         binned_spectra = spectra.copy()
         x_axis_binned = x_axis
 
-    # Remove Q-branch regions
+    # Remove Q-branch regions by setting to NaN
     if q_branch_removals:
         for removal in q_branch_removals:
             start = removal['start']
             end = removal['end']
             mask = ~((x_axis_binned >= start) & (x_axis_binned <= end))
-            binned_spectra = binned_spectra * mask  # Zero out the specified range
+            # Set the y-values in the removal ranges to NaN
+            binned_spectra = np.where(mask, binned_spectra, np.nan)
 
     # Automatic Q-branch normalization
-    # Find the highest peak in the spectrum
-    highest_peak_idx = np.argmax(binned_spectra)
+    # Find the highest peak in the spectrum, ignoring NaNs
+    if np.all(np.isnan(binned_spectra)):
+        st.warning("All spectral data has been removed due to Q-branch removal. Unable to normalize the spectrum.")
+        normalized_spectra = binned_spectra.copy()
+        peaks = []
+        properties = {}
+        return normalized_spectra, x_axis_binned, peaks, properties
+
+    highest_peak_idx = np.nanargmax(binned_spectra)
     highest_peak_intensity = binned_spectra[highest_peak_idx]
 
-    if highest_peak_intensity == 0:
-        st.warning("Highest peak intensity is zero. Unable to normalize the spectrum.")
+    if highest_peak_intensity == 0 or np.isnan(highest_peak_intensity):
+        st.warning("Highest peak intensity is zero or NaN. Unable to normalize the spectrum.")
         normalized_spectra = binned_spectra.copy()
     else:
         normalized_spectra = binned_spectra / highest_peak_intensity
@@ -490,10 +526,15 @@ with col1:
         # Initialize filtered_smiles with all unique SMILES
         filtered_smiles = data['SMILES'].unique()
 
+        # Determine the overall x-axis range for validation in Q-Branch Removal
+        # Assuming all spectra have the same length and wavelength mapping
+        sample_spectra = data.iloc[0]['Raw_Spectra_Intensity']
+        x_axis_min = 10000 / 4000  # Minimum wavelength corresponding to 4000 cm⁻¹
+        x_axis_max = 10000 / 500   # Maximum wavelength corresponding to 500 cm⁻¹
+
         # Advanced Filtration Metrics
         with st.expander("Advanced Filtration Metrics"):
             # Utilize tabs for better organization
-            # Added "Q-Branch Removal" tab
             tabs = st.tabs(["Background Settings", "Binning", "Peak Detection", "Q-Branch Removal"])
 
             # Background Settings Tab
@@ -668,9 +709,20 @@ with col1:
                 if add_q_branch:
                     if q_start >= q_end:
                         st.error("Start wavelength must be less than end wavelength.")
+                    elif q_start < x_axis_min or q_end > x_axis_max:
+                        st.error(f"Please enter wavelengths within the data range ({x_axis_min:.2f} µm to {x_axis_max:.2f} µm).")
                     else:
-                        st.session_state['q_branch_removals'].append({'start': q_start, 'end': q_end})
-                        st.success(f"Removed Q-branch from {q_start} µm to {q_end} µm.")
+                        # Check for overlapping ranges
+                        overlap = False
+                        for removal in st.session_state['q_branch_removals']:
+                            if not (q_end < removal['start'] or q_start > removal['end']):
+                                overlap = True
+                                break
+                        if overlap:
+                            st.error("The specified range overlaps with an existing Q-branch removal.")
+                        else:
+                            st.session_state['q_branch_removals'].append({'start': q_start, 'end': q_end})
+                            st.success(f"Removed Q-branch from {q_start} µm to {q_end} µm.")
 
                 # Display current Q-branch removals
                 if st.session_state['q_branch_removals']:
@@ -815,8 +867,12 @@ with main_col2:
                             # Get user-selected color for the molecule
                             color = foreground_colors.get(smiles, 'blue')  # Default to blue if not set
 
-                            # Plot foreground molecule
-                            ax_spec.fill_between(x_axis_binned, 0, normalized_spectra, color=color, alpha=0.7, label=smiles)
+                            # Split the data into segments excluding Q-branch ranges
+                            segments = split_segments(x_axis_binned, normalized_spectra)
+
+                            # Plot each segment separately to create gaps
+                            for segment_x, segment_y in segments:
+                                ax_spec.fill_between(segment_x, 0, segment_y, color=color, alpha=0.7, label=smiles)
 
                             if enable_peak_finding:
                                 # Detect peaks with simplified parameters
@@ -857,17 +913,6 @@ with main_col2:
                             ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
                             ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
-                        # Shade Q-branch removal regions
-                        for removal in st.session_state['q_branch_removals']:
-                            start = removal['start']
-                            end = removal['end']
-                            ax_spec.axvspan(start, end, color='grey', alpha=0.3, label='Q-Branch Removed')
-
-                        # To avoid duplicate labels in the legend
-                        handles, labels = ax_spec.get_legend_handles_labels()
-                        by_label = dict(zip(labels, handles))
-                        ax_spec.legend(by_label.values(), by_label.keys())
-
                         # Customize plot
                         ax_spec.set_xlim([x_axis_binned.min(), x_axis_binned.max()])
 
@@ -881,6 +926,12 @@ with main_col2:
 
                         ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
                         ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+
+                        if selected_smiles:
+                            # Remove duplicate labels in legend
+                            handles, labels = ax_spec.get_legend_handles_labels()
+                            by_label = dict(zip(labels, handles))
+                            ax_spec.legend(by_label.values(), by_label.keys())
 
                         st.pyplot(fig_spec)
 
