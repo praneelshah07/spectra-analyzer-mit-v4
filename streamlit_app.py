@@ -243,9 +243,10 @@ def bin_and_normalize_spectra(
     """
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
-        bins = np.arange(x_axis.min(), x_axis.max() + bin_size, bin_size)
+        # Corrected binning to prevent extra bin
+        bins = np.arange(x_axis.min(), x_axis.max(), bin_size)
         digitized = np.digitize(x_axis, bins)
-        x_axis_binned = bins[:-1] + bin_size / 2  # Center of bins, excluding the last edge
+        x_axis_binned = bins + bin_size / 2  # Center of bins
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
@@ -299,33 +300,25 @@ def bin_and_normalize_spectra(
 
     # Interpolate NaN regions to smooth gaps
     if interpolate:
-        try:
-            # Convert to pandas Series for interpolation
-            spectra_series = pd.Series(normalized_spectra, index=x_axis_binned)
-            # Perform linear interpolation
-            spectra_interpolated = spectra_series.interpolate(method='linear', limit_direction='both')
-            # Update normalized_spectra
-            normalized_spectra = spectra_interpolated.values
+        # Convert to pandas Series for interpolation
+        spectra_series = pd.Series(normalized_spectra, index=x_axis_binned)
+        # Perform linear interpolation
+        spectra_interpolated = spectra_series.interpolate(method='linear', limit_direction='both')
+        # Update normalized_spectra
+        normalized_spectra = spectra_interpolated.values
 
-            if debug:
-                fig_interp, ax_interp = plt.subplots(figsize=(10, 4))
-                ax_interp.plot(x_axis_binned, normalized_spectra, label='Interpolated Spectra')
-                ax_interp.set_title("Spectra After Interpolation")
-                ax_interp.set_xlabel("Wavelength (µm)")
-                ax_interp.set_ylabel("Normalized Intensity")
-                ax_interp.legend()
-                st.pyplot(fig_interp)
-                plt.close(fig_interp)
-        except Exception as e:
-            st.error(f"Error during interpolation: {e}")
-            return normalized_spectra, x_axis_binned, [], {}
+        if debug:
+            fig_interp, ax_interp = plt.subplots(figsize=(10, 4))
+            ax_interp.plot(x_axis_binned, normalized_spectra, label='Interpolated Spectra')
+            ax_interp.set_title("Spectra After Interpolation")
+            ax_interp.set_xlabel("Wavelength (µm)")
+            ax_interp.set_ylabel("Normalized Intensity")
+            ax_interp.legend()
+            st.pyplot(fig_interp)
+            plt.close(fig_interp)
 
     # Detect peaks after normalization and interpolation
-    try:
-        peaks, properties = detect_peaks(normalized_spectra, sensitivity=q_branch_threshold, max_peaks=int(max_peak_limit * 10))  # Adjust max_peaks as needed
-    except Exception as e:
-        st.error(f"Error during peak detection: {e}")
-        peaks, properties = [], {}
+    peaks, properties = detect_peaks(normalized_spectra, sensitivity=q_branch_threshold, max_peaks=int(max_peak_limit * 10))  # Adjust max_peaks as needed
 
     if debug:
         fig_debug, ax_debug = plt.subplots(figsize=(10, 4))
@@ -338,10 +331,6 @@ def bin_and_normalize_spectra(
         ax_debug.legend()
         st.pyplot(fig_debug)
         plt.close(fig_debug)
-
-    # Debugging: Check lengths to prevent mismatch
-    if debug:
-        st.write(f"x_axis_binned length: {len(x_axis_binned)}, normalized_spectra length: {len(normalized_spectra)}")
 
     return normalized_spectra, x_axis_binned, peaks, properties
 
@@ -790,31 +779,30 @@ with col1:
                                     st.success(f"Deleted Q-branch removal from {q['start']} µm to {q['end']} µm.")
 
     # Foreground Molecules Selection (Clean Interface)
-    if data is not None:
-        selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
+    selected_smiles = st.multiselect('Select Foreground Molecules:', data['SMILES'].unique())
 
-        # Color Selection for Foreground Molecules
-        if selected_smiles:
-            st.markdown("**Select Colors for Foreground Molecules**")
-            foreground_colors = {}
-            # Define allowed colors excluding black and yellow
-            allowed_colors = [
-                'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
-                'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
-                'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
-                'violet', 'turquoise', 'salmon'
-            ]
-            for smiles in selected_smiles:
-                foreground_colors[smiles] = st.selectbox(
-                    f"Select color for molecule {smiles}",
-                    options=allowed_colors,
-                    key=f"color_{smiles}"
-                )
-        else:
-            foreground_colors = {}
+    # Color Selection for Foreground Molecules
+    if selected_smiles:
+        st.markdown("**Select Colors for Foreground Molecules**")
+        foreground_colors = {}
+        # Define allowed colors excluding black and yellow
+        allowed_colors = [
+            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
+            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
+            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
+            'violet', 'turquoise', 'salmon'
+        ]
+        for smiles in selected_smiles:
+            foreground_colors[smiles] = st.selectbox(
+                f"Select color for molecule {smiles}",
+                options=allowed_colors,
+                key=f"color_{smiles}"
+            )
+    else:
+        foreground_colors = {}
 
-        # Confirm button
-        confirm_button = st.button('Confirm Selection and Start Plotting')
+    # Confirm button
+    confirm_button = st.button('Confirm Selection and Start Plotting')
 
 with main_col2:
     st.markdown('<div class="header">Graph</div>', unsafe_allow_html=True)
@@ -827,10 +815,36 @@ with main_col2:
                 st.warning("No foreground molecules selected and Sonogram plotting is disabled.")
             else:
                 with st.spinner('Generating plots, this may take some time...'):
-                    try:
-                        # Initialize figure and axis
-                        fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
+                    if st.session_state['plot_sonogram']:
+                        # Sonogram plotting logic
+                        intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
+                        if len(intensity_data) > 1:
+                            try:
+                                dist_mat = squareform(pdist(intensity_data))
+                                ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
 
+                                fig_sono, ax_sono = plt.subplots(figsize=(12, 12))
+                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[2.5, 20, len(ordered_dist_mat), 0], cmap='viridis')
+                                ax_sono.set_xlabel("Wavelength (µm)")
+                                ax_sono.set_ylabel("Molecules")
+                                ax_sono.set_title("Sonogram Plot")
+
+                                st.pyplot(fig_sono)
+                                plt.close(fig_sono)
+
+                                # Download button for the sonogram
+                                buf_sono = io.BytesIO()
+                                fig_sono.savefig(buf_sono, format='png')
+                                buf_sono.seek(0)
+                                st.download_button(label="Download Sonogram as PNG", data=buf_sono, file_name="sonogram.png", mime="image/png")
+                            except Exception as e:
+                                st.error(f"Error generating sonogram: {e}")
+                        else:
+                            st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
+
+                    # Spectra plotting logic
+                    if len(selected_smiles) > 0:
+                        fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
                         # Define allowed colors for selection
                         allowed_colors = [
                             'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
@@ -854,6 +868,8 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
+                            # Correct the wavenumber range to match spectra length
+                            # Assuming 'Raw_Spectra_Intensity' has 3500 points
                             wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Ensure x_axis and spectra have the same length
@@ -889,6 +905,8 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0]['Raw_Spectra_Intensity']
                             # Define x_axis based on the length of spectra
+                            # Correct the wavenumber range to match spectra length
+                            # Assuming 'Raw_Spectra_Intensity' has 3500 points
                             wavenumber = np.arange(4000, 500, -1)  # 4000 to 501 inclusive, step=-1
                             x_axis = 10000 / wavenumber  # Convert wavenumber to wavelength (µm)
                             # Ensure x_axis and spectra have the same length
@@ -967,86 +985,43 @@ with main_col2:
                                         bbox=dict(facecolor='yellow', alpha=0.7, edgecolor='none')
                                     )
 
-                    # Add functional group labels for background gases based on wavelength
-                    try:
+                        # Add functional group labels for background gases based on wavelength
                         for fg in st.session_state[functional_groups_key]:
                             fg_wavelength = fg['Wavelength']
                             fg_label = fg['Functional Group']
                             ax_spec.axvline(fg_wavelength, color='grey', linestyle='--')
-                            ax_spec.text(
-                                fg_wavelength, 
-                                1, 
-                                fg_label, 
-                                fontsize=12, 
-                                color='black', 
-                                ha='center'
-                            )
-                    except KeyError:
-                        st.error("Functional groups data not found in session state.")
-                    except Exception as e:
-                        st.error(f"An error occurred while adding functional group labels: {e}")
+                            ax_spec.text(fg_wavelength, 1, fg_label, fontsize=12, color='black', ha='center')
 
-                    # Customize plot
-                    ax_spec.set_xlim([x_axis_binned.min(), x_axis_binned.max()])
+                        # Customize plot
+                        ax_spec.set_xlim([x_axis_binned.min(), x_axis_binned.max()])
 
-                    major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
-                    ax_spec.set_xticks(major_ticks)
-                    ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
+                        major_ticks = [3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 20]
+                        ax_spec.set_xticks(major_ticks)
+                        ax_spec.set_xticklabels([str(tick) for tick in major_ticks])
 
-                    ax_spec.tick_params(direction="in",
-                        labelbottom=True, labeltop=False, labelleft=True, labelright=False,
-                        bottom=True, top=True, left=True, right=True)
+                        ax_spec.tick_params(direction="in",
+                            labelbottom=True, labeltop=False, labelleft=True, labelright=False,
+                            bottom=True, top=True, left=True, right=True)
 
-                    ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
-                    ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
+                        ax_spec.set_xlabel("Wavelength ($\mu$m)", fontsize=22)
+                        ax_spec.set_ylabel("Absorbance (Normalized to 1)", fontsize=22)
 
-                    if selected_smiles:
-                        # Remove duplicate labels in legend
-                        handles, labels = ax_spec.get_legend_handles_labels()
-                        by_label = dict(zip(labels, handles))
-                        ax_spec.legend(by_label.values(), by_label.keys())
+                        if selected_smiles:
+                            # Remove duplicate labels in legend
+                            handles, labels = ax_spec.get_legend_handles_labels()
+                            by_label = dict(zip(labels, handles))
+                            ax_spec.legend(by_label.values(), by_label.keys())
 
-                    st.pyplot(fig_spec)
+                        st.pyplot(fig_spec)
 
-                    # Download button for the spectra plot
-                    buf_spec = io.BytesIO()
-                    fig_spec.savefig(buf_spec, format='png')
-                    buf_spec.seek(0)
-                    st.download_button(
-                        label="Download Plot as PNG",
-                        data=buf_spec,
-                        file_name="spectra_plot.png",
-                        mime="image/png"
-                    )
-                    plt.close(fig_spec)
-
-                    # Optionally, handle Sonogram Plot if enabled
-                    if st.session_state['plot_sonogram']:
-                        try:
-                            # Sonogram plotting logic
-                            intensity_data = np.array(data[data['SMILES'].isin(filtered_smiles)]['Raw_Spectra_Intensity'].tolist())
-                            if len(intensity_data) > 1:
-                                dist_mat = squareform(pdist(intensity_data))
-                                ordered_dist_mat, res_order, res_linkage = compute_serial_matrix(dist_mat, "ward")
-
-                                fig_sono, ax_sono = plt.subplots(figsize=(12, 12))
-                                ax_sono.imshow(np.array(intensity_data)[res_order], aspect='auto', extent=[2.5, 20, len(ordered_dist_mat), 0], cmap='viridis')
-                                ax_sono.set_xlabel("Wavelength (µm)")
-                                ax_sono.set_ylabel("Molecules")
-                                ax_sono.set_title("Sonogram Plot")
-
-                                st.pyplot(fig_sono)
-                                plt.close(fig_sono)
-
-                                # Download button for the sonogram
-                                buf_sono = io.BytesIO()
-                                fig_sono.savefig(buf_sono, format='png')
-                                buf_sono.seek(0)
-                                st.download_button(label="Download Sonogram as PNG", data=buf_sono, file_name="sonogram.png", mime="image/png")
-                            else:
-                                st.error("Not enough data to generate the sonogram. Please ensure there are at least two molecules.")
-                        except Exception as e:
-                            st.error(f"Error generating sonogram: {e}")
-
-                    except Exception as e:
-                        st.error(f"An error occurred during plotting: {e}")
+                        # Download button for the spectra plot
+                        buf_spec = io.BytesIO()
+                        fig_spec.savefig(buf_spec, format='png')
+                        buf_spec.seek(0)
+                        st.download_button(
+                            label="Download Plot as PNG",
+                            data=buf_spec,
+                            file_name="spectra_plot.png",
+                            mime="image/png"
+                        )
+                        plt.close(fig_spec)
