@@ -76,8 +76,6 @@ st.markdown('<div class="banner">Spectra Visualization Tool</div>', unsafe_allow
 if 'user_id' not in st.session_state:
     st.session_state['user_id'] = None
 
-# Removed 'functional_groups_dict' as it's no longer needed
-
 if 'plot_sonogram' not in st.session_state:
     st.session_state['plot_sonogram'] = False
 
@@ -198,8 +196,6 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
     Returns:
     - normalized_spectra: The normalized spectral data.
     - x_axis: The corresponding wavelength axis.
-    - peaks: Indices of detected peaks.
-    - properties: Properties of the detected peaks.
     """
     # Define wavenumber range
     wavenumber = np.arange(4000, 500, -1)
@@ -243,7 +239,7 @@ def bin_and_normalize_spectra(spectra, bin_size=None, bin_type='none', q_branch_
         st.pyplot(fig_debug)
         plt.close(fig_debug)
 
-    return normalized_spectra, x_axis, highest_peak_idx, highest_peak_intensity
+    return normalized_spectra, x_axis
 
 @st.cache_data
 def filter_molecules_by_functional_group(smiles_list, functional_group_smarts):
@@ -413,7 +409,7 @@ def remove_q_branch(spectra, x_axis, peak_wavelength, slope_threshold=1.0, gauss
     - gaussian_sigma: The sigma value for Gaussian blending.
 
     Returns:
-    - modified_spectra: The spectra with the Q-branch peak removed.
+    - modified_spectra: The spectra with the Q-branch peak removed and re-normalized.
     """
     # Calculate the first derivative (slope) of the spectra
     slope = np.gradient(spectra, x_axis)
@@ -425,11 +421,11 @@ def remove_q_branch(spectra, x_axis, peak_wavelength, slope_threshold=1.0, gauss
     start_idx = peak_idx
     end_idx = peak_idx
 
-    # Identify the start of the peak by moving left until slope increases beyond the threshold
+    # Identify the start of the peak by moving left until slope exceeds the threshold
     while start_idx > 0 and slope[start_idx] > slope_threshold:
         start_idx -= 1
 
-    # Identify the end of the peak by moving right until slope decreases below the threshold
+    # Identify the end of the peak by moving right until slope falls below the negative threshold
     while end_idx < len(slope)-1 and slope[end_idx] < -slope_threshold:
         end_idx += 1
 
@@ -449,6 +445,13 @@ def remove_q_branch(spectra, x_axis, peak_wavelength, slope_threshold=1.0, gauss
 
         # Blend the region by multiplying with the Gaussian window
         modified_spectra[start_idx:end_idx+1] = modified_spectra[start_idx:end_idx+1] * window
+
+    # Re-normalize the entire spectrum to have a maximum of 1.0
+    max_intensity = np.max(modified_spectra)
+    if max_intensity > 0:
+        modified_spectra = modified_spectra / max_intensity
+    else:
+        st.warning("After Q-Branch Removal, the spectrum has zero intensity. Unable to normalize.")
 
     return modified_spectra
 
@@ -719,7 +722,7 @@ with col1:
                     # Apply Q-Branch Removal to all spectra
                     def apply_q_branch_removal(row):
                         spectra = row['Raw_Spectra_Intensity']
-                        normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
+                        normalized_spectra, x_axis = bin_and_normalize_spectra(
                             spectra, 
                             bin_size=bin_size, 
                             bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
@@ -779,6 +782,7 @@ with main_col2:
             # Determine which spectra to plot: Modified or Original
             if 'Modified_Spectra' in data.columns:
                 spectra_column = 'Modified_Spectra'
+                st.info("Using modified spectra with Q-Branch Removal applied.")
             else:
                 spectra_column = 'Raw_Spectra_Intensity'
 
@@ -839,7 +843,7 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0][spectra_column]
                             # Apply binning and normalization
-                            normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
+                            normalized_spectra, x_axis = bin_and_normalize_spectra(
                                 spectra, 
                                 bin_size=bin_size, 
                                 bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
@@ -857,7 +861,7 @@ with main_col2:
                                 continue
                             spectra = spectra_row.iloc[0][spectra_column]
                             # Apply binning and normalization
-                            normalized_spectra, x_axis, _, _ = bin_and_normalize_spectra(
+                            normalized_spectra, x_axis = bin_and_normalize_spectra(
                                 spectra, 
                                 bin_size=bin_size, 
                                 bin_type=bin_type.lower(),  # Now 'wavelength' or 'none'
