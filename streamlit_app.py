@@ -627,10 +627,10 @@ with col1:
             foreground_colors = {}
             # Define allowed colors excluding black and yellow
             allowed_colors = [
-                'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
-                'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
-                'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
-                'violet', 'turquoise', 'salmon'
+                'Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Orange',
+                'Purple', 'Pink', 'Brown', 'Lime', 'Maroon',
+                'Navy', 'Teal', 'Olive', 'Coral', 'Gold', 'Indigo',
+                'Violet', 'Turquoise', 'Salmon'
             ]
             for smiles in selected_smiles:
                 foreground_colors[smiles] = st.selectbox(
@@ -687,10 +687,10 @@ with main_col2:
                         fig_spec, ax_spec = plt.subplots(figsize=(16, 6.5), dpi=100)
                         # Define allowed colors for selection
                         allowed_colors = [
-                            'red', 'green', 'blue', 'cyan', 'magenta', 'orange',
-                            'purple', 'pink', 'brown', 'gray', 'lime', 'maroon',
-                            'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
-                            'violet', 'turquoise', 'salmon'
+                            'Red', 'Green', 'Blue', 'Cyan', 'Magenta', 'Orange',
+                            'Purple', 'Pink', 'Brown', 'Lime', 'Maroon',
+                            'Navy', 'Teal', 'Olive', 'Coral', 'Gold', 'Indigo',
+                            'Violet', 'Turquoise', 'Salmon'
                         ]
                         random.shuffle(allowed_colors)  # Shuffle to provide varied color assignments
                         target_spectra = {}
