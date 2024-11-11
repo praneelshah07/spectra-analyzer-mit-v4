@@ -243,15 +243,15 @@ def bin_and_normalize_spectra(
     """
     # Binning based on bin_type
     if bin_type.lower() == 'wavelength' and bin_size is not None:
-        # Corrected binning to prevent extra bin
-        bins = np.arange(x_axis.min(), x_axis.max(), bin_size)
-        digitized = np.digitize(x_axis, bins)
-        x_axis_binned = bins + bin_size / 2  # Center of bins
+        # Corrected binning to prevent extra bin and ensure matching lengths
+        bins = np.arange(x_axis.min(), x_axis.max() + bin_size, bin_size)  # Include the last bin edge
+        digitized = np.digitize(x_axis, bins) - 1  # Adjust digitize to start from 0
+        x_axis_binned = bins[:-1] + bin_size / 2  # Centers of bins
 
         # Perform binning by averaging spectra in each bin
         binned_spectra = np.array([
             np.mean(spectra[digitized == i]) if np.any(digitized == i) else 0  # Set empty bins to 0
-            for i in range(1, len(bins))
+            for i in range(len(bins) - 1)  # Number of bins is len(bins) -1
         ])
     else:
         # No binning; use original spectra
