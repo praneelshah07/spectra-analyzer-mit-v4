@@ -792,10 +792,15 @@ with col1:
             'navy', 'teal', 'olive', 'coral', 'gold', 'indigo',
             'violet', 'turquoise', 'salmon'
         ]
-        for smiles in selected_smiles:
+        for idx, smiles in enumerate(selected_smiles):
+            # Assign default color based on index to ensure different defaults
+            default_color = allowed_colors[idx % len(allowed_colors)]
+            # Find the index of the default color to set it as the selected option
+            default_color_index = allowed_colors.index(default_color)
             foreground_colors[smiles] = st.selectbox(
                 f"Select color for molecule {smiles}",
                 options=allowed_colors,
+                index=default_color_index,
                 key=f"color_{smiles}"
             )
     else:
